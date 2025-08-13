@@ -1,18 +1,43 @@
 <div align="center">
-  <h1 style="font-size: 1.8em; margin-bottom: 0em">
-    <strong>HPGT:</strong>
-  </h1>
-  <h2 style="font-size: 1.4em; margin-top: 0;">
-    Spatiotemporal Calibration and <strong>Ground</strong> <strong>Truth</strong> Estimation for <br>
-     </strong>High-Precision</strong> SLAM Benchmarking
-  </h2>
+
+<h1>
+  <span style="color:#2980b9"><b>H</b></span>
+  <span style="color:#2980b9"><b>P</b></span>
+  <span style="color:#27ae60"><b>G</b></span>
+  <span style="color:#27ae60"><b>T</b></span>
+</h1>
+
+<h3>
+  Spatiotemporal Calibration and 
+  <span style="color:#27ae60"><b>Ground</b></span> 
+  <span style="color:#27ae60"><b>Truth</b></span> Estimation for <br>
+  <span style="color:#2980b9"><b>High</b></span>-<span style="color:#2980b9"><b>Precision</b></span> SLAM Benchmarking
+</h3>
+
 </div>
 
+
+
+## 📖 Overview
 **HPGT** is an estimator that provides **h**igh-**p**recision 6-DoF localization **g**round **t**ruth (GT) based on motion capture (MoCap) systems for rigorous SLAM benchmarking. It addresses the insufficient accuracy of MoCap-based GT in existing benchmarks (such as the well-known EuRoC and TUM-VI datasets), particularly in quantifying rotational errors and inter-frame relative errors.
 
 ---
 
-<br>
+## 📚 Table of Contents
+
+- [📖 Overview](#-overview)
+- [📚 Table of Contents](#-table-of-contents)
+- [✨ Features](#-features)
+- [🛠️ Installation](#️-installation)
+  - [Manual Dependency Installation and Build](#manual-dependency-installation-and-build)
+  - [Docker Setup and Build (Recommended)](#docker-setup-and-build-recommended)
+- [🚀 Running the HPGT Estimator](#-running-the-hpgt-estimator)
+  - [Running on Simulated Data](#running-on-simulated-data)
+  - [Running on Real-World Data](#running-on-real-world-data)
+- [📜 License](#-license)
+- [🤝 Feedback](#-feedback)
+
+---
 
 ## ✨ Features
 - ***High Precision:*** Fuses IMU and MoCap data, leveraging their complementary strengths to improve GT accuracy, especially in mitigating high-frequency jitter in MoCap raw data.
@@ -24,8 +49,6 @@
 </p>
 
 ---
-
-<br>
 
 ## 🛠️ Installation
 
@@ -126,8 +149,6 @@ cmake .. && make -j$(nproc)
 
 ---
 
-<br>
-
 ## 🚀 Running the HPGT Estimator
 
 ### Running on Simulated Data
@@ -181,8 +202,6 @@ These will generate IMU-aligned GT trajectories based on the raw MoCap and IMU d
 
 ---
 
-<br>
-
 ## 📜 License
 
 Copyright 2025 Yongjiang Laboratory
@@ -200,8 +219,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 ---
-
-<br>
 
 ## 🤝 Feedback
 
