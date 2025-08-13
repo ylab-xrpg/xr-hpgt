@@ -1,0 +1,77 @@
+{
+  "gravity_magnitude_": 9.806,
+  "imu_config_": [
+    {
+      "acc_bias_init": {
+        "x": -0.005308531531573226,
+        "y": 0.05305142058571386,
+        "z": 0.22939249275387613
+      },
+      "body_frame_flag": true,
+      "file_name": "imu.txt",
+      "frequency": 1000.0,
+      "gyr_bias_init": {
+        "x": -0.02039686393498002,
+        "y": -0.004686109729070164,
+        "z": 0.010689481009251493
+      },
+      "model_type": "calibrated",
+      "noise": {
+        "acc_b": 0.0001994539453860211,
+        "acc_n": 0.015117597500409535,
+        "gyr_b": 1.1092858061130354e-05,
+        "gyr_n": 0.0010444522263924943
+      },
+      "rot_q_BI_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "toff_BI_init": 0.0,
+      "trans_BI_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    }
+  ],
+  "max_toff_change_": 0.1,
+  "opt_spatial_param_flag_": true,
+  "opt_temporal_param_flag_": true,
+  "output_frequency_": 100.0,
+  "pose_config_": [
+    {
+      "abs_pose_flag": true,
+      "body_frame_flag": false,
+      "file_name": "pose.txt",
+      "rot_noise": 0.01,
+      "rot_q_BP_init": {
+        "w": 0.6918845063161286,
+        "x": 0.16058188023476722,
+        "y": -0.08058764339067963,
+        "z": 0.6992960184304576
+      },
+      "rot_q_GW_init": {
+        "w": 0.7939325304067336,
+        "x": 0.6021556463762852,
+        "y": -0.05468217422701081,
+        "z": -0.06394978124219901
+      },
+      "toff_BP_init": 0.0026455401779975035,
+      "trans_BP_init": {
+        "x": -0.0003958238243291654,
+        "y": -0.0007454075463760693,
+        "z": 0.012969843862249556
+      },
+      "trans_GW_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "trans_noise": 0.003,
+      "world_frame_flag": true
+    }
+  ],
+  "spline_knot_interval_": 0.01
+}

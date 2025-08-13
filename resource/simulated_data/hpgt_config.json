@@ -1,0 +1,142 @@
+{
+  "gravity_magnitude_": 9.8,
+  "imu_config_": [
+    {
+      "acc_bias_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "body_frame_flag": false,
+      "file_name": "imu_0.txt",
+      "frequency": 100.0,
+      "gyr_bias_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "model_type": "calibrated",
+      "noise": {
+        "acc_b": 0.005,
+        "acc_n": 0.02,
+        "gyr_b": 0.0005,
+        "gyr_n": 0.001
+      },
+      "rot_q_BI_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "toff_BI_init": 0.0,
+      "trans_BI_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    {
+      "acc_bias_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "body_frame_flag": false,
+      "file_name": "imu_1.txt",
+      "frequency": 100.0,
+      "gyr_bias_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "model_type": "calibrated",
+      "noise": {
+        "acc_b": 0.0005,
+        "acc_n": 0.002,
+        "gyr_b": 0.00005,
+        "gyr_n": 0.0001
+      },
+      "rot_q_BI_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "toff_BI_init": 0.0,
+      "trans_BI_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    }
+  ],
+  "max_toff_change_": 0.1,
+  "opt_spatial_param_flag_": true,
+  "opt_temporal_param_flag_": true,
+  "output_frequency_": 100.0,
+  "pose_config_": [
+    {
+      "abs_pose_flag": true,
+      "body_frame_flag": true,
+      "file_name": "mocap.txt",
+      "rot_noise": 0.002,
+      "rot_q_BP_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "rot_q_GW_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "toff_BP_init": 0.0,
+      "trans_BP_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "trans_GW_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "trans_noise": 0.001,
+      "world_frame_flag": true
+    },
+    {
+      "abs_pose_flag": true,
+      "body_frame_flag": false,
+      "file_name": "dut.txt",
+      "rot_noise": 0.002,
+      "rot_q_BP_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "rot_q_GW_init": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "toff_BP_init": 0.0,
+      "trans_BP_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      "trans_GW_init": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "trans_noise": 0.001,
+      "world_frame_flag": false
+    }
+  ],
+  "spline_knot_interval_": 0.01
+}
