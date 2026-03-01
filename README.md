@@ -34,6 +34,7 @@
 - [🚀 Running the HPGT Estimator](#-running-the-hpgt-estimator)
   - [Running on Simulated Data](#running-on-simulated-data)
   - [Running on Real-World Data](#running-on-real-world-data)
+- [📄 Citation](#-citation)
 - [📜 License](#-license)
 - [🤝 Feedback](#-feedback)
 
@@ -42,7 +43,7 @@
 ## ✨ Features
 - ***High Precision:*** Fuses IMU and MoCap data, leveraging their complementary strengths to improve GT accuracy, especially in mitigating high-frequency jitter in MoCap raw data.
 
-- ***Spatiotemporal Calibration:*** Employs continuous-time estimation to perform the joint spatiotemporal calibration of MoCap, IMU, and the device under test (DUT, providing either pose or IMU data), thereby producing GT trajectories that are aligned with the DUT’s clock and coordinate frame.
+- ***Spatiotemporal Calibration:*** Uses continuous-time estimation for joint spatiotemporal calibration of MoCap, IMU, and the device under test (DUT, which may provide either pose or IMU data), producing GT trajectories aligned with the DUT’s clock and coordinate frame.
 
 <p align="center">
   <img src="docs/teaser.png" alt="teaser" width="800">
@@ -199,6 +200,30 @@ We also provide processed sequences from TUM-VI and EuRoC datasets, which can be
 These will generate IMU-aligned GT trajectories based on the raw MoCap and IMU data from the public datasets, which can be directly used for SLAM algorithm benchmarking.
 
 **Note:** In practical applications, we recommend fusing a higher-precision IMU to assist in mitigating MoCap jitter, rather than the IMU of the DUT. Our estimator essentially fuses arbitrary numbers and combinations of IMU and pose measurements to perform spatiotemporal calibration and achieve optimal trajectory estimation. You can modify the configuration file according to your needs and specify arbitrary numbers and combinations of sensors.
+
+---
+
+## 📄 Citation
+
+For more technical details, please refer to our paper:
+
+- Shu Z, Bei S, Li L, et al. Spatiotemporal Calibration and Ground Truth Estimation for High-Precision SLAM Benchmarking in Extended Reality. *IEEE Transactions on Visualization and Computer Graphics*, 2025, **31**(11): 9899-9909. \[[paper-TVCG](https://ieeexplore.ieee.org/abstract/document/11190003/)\] \[[paper-arXiv](https://arxiv.org/pdf/2512.07221)\]
+
+If you find this project useful in your research, please cite the BibTeX below:
+
+```bibtex
+@article{shu2025spatiotemporal,
+  title   = {Spatiotemporal Calibration and Ground Truth Estimation for High-Precision SLAM Benchmarking in Extended Reality},
+  author  = {Shu, Zichao and Bei, Sizhi and Li, Liang and others},
+  journal = {IEEE Transactions on Visualization and Computer Graphics},
+  year    = {2025},
+  volume  = {31},
+  number  = {11},
+  pages   = {9899--9909},
+  url     = {https://ieeexplore.ieee.org/abstract/document/11190003/},
+  note    = {arXiv:2512.07221}
+}
+```
 
 ---
 
