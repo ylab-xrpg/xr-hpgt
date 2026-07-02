@@ -158,18 +158,18 @@ cmake .. && make -j$(nproc)
 cd /hpgt/bin
 
 # Run with default file structure
-./RunHPGT ../resource/test_data
+./RunHPGT ../resource/simulated_data
 
 # Run with full parameter specification
 ./RunHPGT \
-  ../resource/test_data/hpgt_config.json \
-  ../resource/test_data \
-  ../resource/test_data/hpgt_output_calib.json \
-  ../resource/test_data/hpgt_output_traj.txt
+  ../resource/simulated_data/hpgt_config.json \
+  ../resource/simulated_data \
+  ../resource/simulated_data/hpgt_output_calib.json \
+  ../resource/simulated_data/hpgt_output_traj.txt
 
 ```
 
-We simulate two pose sequences (`mocap0.txt` and `pose0.txt`) and two IMU sequences (`imu_low.txt` and `imu_high.txt`) to test the estimator’s ability to handle fusion across different sensors. The MoCap data is treated as both the body frame and the global reference. The refined trajectory output is stored in `hpgt_output_traj.txt` and can be compared with the ground truth in `ground_truth.txt`. Calibration results are saved in `hpgt_output_calib.json`. The estimator accurately recovers the spatiotemporal parameters and suppresses noise, yielding a high-precision trajectory.
+We simulate two pose sequences (`mocap.txt` and `dut.txt`) and two IMU sequences (`imu_0.txt` and `imu_1.txt`) to test the estimator’s ability to handle fusion across different sensors. The MoCap data is treated as both the body frame and the global reference. The refined trajectory output is stored in `hpgt_output_traj.txt` and can be compared with the ground truth in `ground_truth.txt`. Calibration results are saved in `hpgt_output_calib.json`. The estimator accurately recovers the spatiotemporal parameters and suppresses noise, yielding a high-precision trajectory.
 
 The input config file `hpgt_config.json` is essential for controlling the estimator's behavior. It defines the sensor setup, noise models, and optimization settings. Please modify as needed.
 
@@ -190,10 +190,10 @@ In the data folder, we provide multiple acquisition results from two devices for
 We also provide processed sequences from TUM-VI and EuRoC datasets, which can be run as follows:
 
 ```bash
-# TUM-VI dataset sequence
-./RunHPGT ../resource/real_world_data/public_benchmark/EuRoC_V101
+# EuRoC dataset sequence
+./RunHPGT ../resource/real_world_data/public_benchmark/EuRoC_V203
 
-# EuRoC dataset sequence  
+# TUM-VI dataset sequence
 ./RunHPGT ../resource/real_world_data/public_benchmark/TUM_VI_room5
 ```
 
