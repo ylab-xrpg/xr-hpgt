@@ -54,7 +54,7 @@ bool TimeOffsetInitializer::Initialize(
     calib_param->toff_B_Ii_increment[label] = 0.;
 
     spdlog::info("Body frame is set to: [{}]", label);
-    spdlog::info("Time offset (toff_BP) for [{}] is initialized to: {:.6f}",
+    spdlog::info("Time offset (toff_BI) for [{}] is initialized to: {:.6f}",
                  label, calib_param->toff_B_Ii.at(label));
   }
 
@@ -203,15 +203,26 @@ bool TimeOffsetInitializer::SignalCorrelation(
 
 bool TimeOffsetInitializer::CorrelationMaxIndex(
     const Eigen::RowVectorXd& correlation_function, double& max_index) {
-  correlation_function.row(0).maxCoeff(&max_index);
+  if (correlation_function.size() == 0) {
+    spdlog::critical("Cannot find a peak in an empty correlation function.");
+    return false;
+  }
+
+  Eigen::Index peak_index = 0;
+  correlation_function.maxCoeff(&peak_index);
+  max_index = static_cast<double>(peak_index);
 
   // Determine the start and end index.
-  int fitting_start_index, fitting_end_index;
-  fitting_start_index = max_index - refine_fitting_range_;
-  fitting_end_index = max_index + refine_fitting_range_;
+  const int fitting_radius = static_cast<int>(refine_fitting_range_);
+  if (fitting_radius < 1) {
+    spdlog::critical("The correlation fitting radius must be positive.");
+    return false;
+  }
+  const int fitting_start_index = static_cast<int>(peak_index) - fitting_radius;
+  const int fitting_end_index = static_cast<int>(peak_index) + fitting_radius;
 
   if (fitting_start_index < 0 ||
-      fitting_end_index > correlation_function.cols()) {
+      fitting_end_index >= correlation_function.cols()) {
     spdlog::critical(
         "The range of the correlation function is insufficient for calculating "
         "the index of the maximum value. ");
@@ -220,7 +231,7 @@ bool TimeOffsetInitializer::CorrelationMaxIndex(
 
   // Get the correlation values in range.
   std::vector<double> fitting_values;
-  std::vector<double> fitting_index(2 * refine_fitting_range_ + 1);
+  std::vector<double> fitting_index(2 * fitting_radius + 1);
   for (int i = fitting_start_index; i <= fitting_end_index; ++i) {
     fitting_values.push_back(correlation_function(i));
   }
@@ -237,11 +248,27 @@ bool TimeOffsetInitializer::CorrelationMaxIndex(
     }
   }
 
-  // Maximum index = -2*a/b
+  // Maximum index of y = a + b*x + c*x^2 is -b/(2*c).
   Eigen::VectorXd fitting_coeffs =
       design_matrix.householderQr().solve(target_vector);
-  max_index -= fitting_coeffs[1] / (2 * fitting_coeffs[2]) +
-               fitting_index[refine_fitting_range_];
+  const double quadratic_coefficient = fitting_coeffs[2];
+  if (!fitting_coeffs.allFinite() || quadratic_coefficient >= 0. ||
+      std::abs(quadratic_coefficient) <=
+          std::numeric_limits<double>::epsilon()) {
+    spdlog::warn(
+        "Degenerate quadratic correlation fit; using the discrete peak.");
+    return true;
+  }
+
+  const double local_peak = -fitting_coeffs[1] / (2. * quadratic_coefficient);
+  if (!std::isfinite(local_peak) || local_peak < 0. ||
+      local_peak > static_cast<double>(2 * fitting_radius)) {
+    spdlog::warn(
+        "Quadratic correlation peak is outside the fitting range; using the "
+        "discrete peak.");
+    return true;
+  }
+  max_index = static_cast<double>(fitting_start_index) + local_peak;
 
   return true;
 }

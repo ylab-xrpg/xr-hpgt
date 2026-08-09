@@ -105,8 +105,10 @@ if(BUILD_TESTING)
     NAME system_config_test
     COMMAND system_config_test "${HPGT_TEST_DATA_DIR}"
             "${HPGT_TEST_OUTPUT_DIR}/system_config")
-  add_test(NAME sensor_data_manager_test
-           COMMAND sensor_data_manager_test "${HPGT_TEST_DATA_DIR}")
+  add_test(
+    NAME sensor_data_manager_test
+    COMMAND sensor_data_manager_test "${HPGT_TEST_DATA_DIR}"
+            "${HPGT_TEST_OUTPUT_DIR}/sensor_data_manager")
   add_test(NAME initializer_test
            COMMAND initializer_test "${HPGT_TEST_DATA_DIR}")
   add_test(

@@ -34,15 +34,15 @@ int main(int argc, char **argv) {
     spdlog::critical(
         "Invalid input parameters.\n\n"
         "Usage:\n"
-        "  {} <input_pose_path> <input_other_path> <output_path> [mode: p2i | p2p]\n\n"
+        "  {} <input_path_1> <input_path_2> <output_path> [mode: p2i | p2p]\n\n"
         "Description:\n"
-        "  - <input_pose_path>:    Path to the first data file, can be a pose or IMU file\n"
-        "  - <input_other_path>:   Path to the second data file, must be a pose file\n"
-        "  - <output_path>:        Path to save the estimated time offset\n"
-        "  - [mode]:               Optional. Set to 'p2p' for pose-to-pose, or 'p2i' for pose-to-IMU\n"
-        "                          Default is 'p2i' if not specified\n\n"
+        "  - p2i: <input_path_1> is an IMU file and <input_path_2> is a pose file\n"
+        "  - p2p: both input paths are pose files\n"
+        "  - [mode] defaults to 'p2i' when omitted\n"
+        "  - The result is added to timestamps of the second sequence to align\n"
+        "    them with the first sequence's clock\n\n"
         "Examples:\n"
-        "  {} ./pose_1.txt ./imu.txt ./time_offset.txt\n"
+        "  {} ./imu.txt ./pose.txt ./time_offset.txt\n"
         "  {} ./pose_1.txt ./pose_2.txt ./time_offset.txt p2p",
         argv[0], argv[0], argv[0]);
     // clang-format on
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   // ===========================================================================
 
   // Step 2: Compute time offset according to input data types.
-  double toff_1_2;
+  double toff_1_2 = 0.;
   auto toff_initializer = hpgt::TimeOffsetInitializer::Create();
 
   if (exe_mode == "p2p") {
@@ -80,25 +80,34 @@ int main(int argc, char **argv) {
       std::exit(EXIT_FAILURE);
     }
 
-    toff_initializer->EstimateToffFromSeq(seq_1, seq_2, toff_1_2);
+    if (!toff_initializer->EstimateToffFromSeq(seq_1, seq_2, toff_1_2)) {
+      spdlog::critical(
+          "Failed to estimate the time offset between the pose sequences.");
+      std::exit(EXIT_FAILURE);
+    }
 
   } else if (exe_mode == "p2i") {
-    hpgt::ImuSequence seq_1;
-    hpgt::PoseSequence seq_2;
+    hpgt::ImuSequence imu_seq;
+    hpgt::PoseSequence pose_seq;
 
-    if (hpgt::ImuDataLoader::Load(input_path_1, seq_1)) {
-      spdlog::info("Loaded {} imu frames from data path 2. ", seq_2.size());
+    if (hpgt::ImuDataLoader::Load(input_path_1, imu_seq)) {
+      spdlog::info("Loaded {} IMU frames from data path 1.", imu_seq.size());
     } else {
       std::exit(EXIT_FAILURE);
     }
 
-    if (hpgt::PoseDataLoader::Load(input_path_2, seq_2)) {
-      spdlog::info("Loaded {} pose frames from data path 1. ", seq_1.size());
+    if (hpgt::PoseDataLoader::Load(input_path_2, pose_seq)) {
+      spdlog::info("Loaded {} pose frames from data path 2.", pose_seq.size());
     } else {
       std::exit(EXIT_FAILURE);
     }
 
-    toff_initializer->EstimateToffFromSeq(seq_1, seq_2, toff_1_2);
+    if (!toff_initializer->EstimateToffFromSeq(imu_seq, pose_seq, toff_1_2)) {
+      spdlog::critical(
+          "Failed to estimate the time offset between the IMU and pose "
+          "sequences.");
+      std::exit(EXIT_FAILURE);
+    }
 
   } else {
     spdlog::critical("Invalid mode '{}'. Only 'p2p' and 'p2i' are supported. ",
@@ -123,6 +132,10 @@ int main(int argc, char **argv) {
   }
 
   out_file << "toff_1_2: " << std::setprecision(12) << toff_1_2 << "\n";
+  if (!out_file) {
+    spdlog::critical("Failed to write the time-offset result: {}", output_path);
+    std::exit(EXIT_FAILURE);
+  }
   out_file.close();
 
   spdlog::info("Time offset saved to '{}'.", output_path);

@@ -14,6 +14,49 @@
 
 #include "hpgt/sensor_data/imu_data.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <limits>
+#include <sstream>
+
+namespace {
+
+bool IsHeaderLine(const std::string &line) {
+  std::string lower_line = line;
+  std::transform(lower_line.begin(), lower_line.end(), lower_line.begin(),
+                 [](unsigned char character) {
+                   return static_cast<char>(std::tolower(character));
+                 });
+  return lower_line.find("timestamp") != std::string::npos;
+}
+
+bool ParseImuLine(const std::string &line, std::vector<double> &values) {
+  const size_t last_character = line.find_last_not_of(" \t\r\n");
+  if (last_character == std::string::npos || line[last_character] == ',') {
+    return false;
+  }
+
+  std::stringstream stream(line);
+  std::string value;
+  while (std::getline(stream, value, ',')) {
+    try {
+      size_t parsed_size = 0;
+      const double parsed_value = std::stod(value, &parsed_size);
+      if (value.find_first_not_of(" \t\r\n", parsed_size) !=
+          std::string::npos) {
+        return false;
+      }
+      values.push_back(parsed_value);
+    } catch (const std::exception &) {
+      return false;
+    }
+  }
+  return values.size() == 7;
+}
+
+}  // namespace
+
 namespace hpgt {
 
 ImuFrame::ImuFrame(const double &t, const Eigen::Vector3d &a,
@@ -32,53 +75,62 @@ bool ImuDataLoader::Load(const std::string &data_path, ImuSequence &imu_data) {
     return false;
   }
 
+  ImuSequence parsed_data;
   std::string line;
+  size_t line_number = 0;
+  bool first_content_line = true;
   double last_timestamp = std::numeric_limits<double>::lowest();
-
-  // Skip the first line (assumed to be header)
-  std::getline(file, line);
-
   while (std::getline(file, line)) {
-    std::stringstream ss(line);
-    std::string value;
+    ++line_number;
+    if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
+      continue;
+    }
+
     std::vector<double> values;
-
-    try {
-      while (std::getline(ss, value, ',')) {
-        values.push_back(std::stod(value));
+    if (!ParseImuLine(line, values)) {
+      if (first_content_line && IsHeaderLine(line)) {
+        first_content_line = false;
+        continue;
       }
-    } catch (const std::exception &e) {
       spdlog::critical(
-          "Each line in the IMU file must be in format "
+          "Invalid IMU data in '{}' at line {}. Expected "
           "\"timestamp (ns), wx (rad/s), wy (rad/s), wz (rad/s), "
-          "ax (m/s^2), ay (m/s^2), az (m/s^2)\". ");
+          "ax (m/s^2), ay (m/s^2), az (m/s^2)\".",
+          data_path, line_number);
       return false;
     }
+    first_content_line = false;
 
-    if (values.size() == 7) {
-      values[0] /= 1e9;
-    } else {
+    if (!std::all_of(values.begin(), values.end(),
+                     [](double value) { return std::isfinite(value); })) {
+      spdlog::critical("Non-finite IMU value in '{}' at line {}.", data_path,
+                       line_number);
+      return false;
+    }
+    values[0] /= 1e9;
+
+    const double timestamp = values[0];
+    const Eigen::Vector3d acc(values[4], values[5], values[6]);
+    const Eigen::Vector3d gyr(values[1], values[2], values[3]);
+
+    if (timestamp <= last_timestamp) {
       spdlog::critical(
-          "Each line in the IMU file must be in format "
-          "\"timestamp (ns), wx (rad/s), wy (rad/s), wz (rad/s), "
-          "ax (m/s^2), ay (m/s^2), az (m/s^2)\". ");
+          "IMU timestamps in '{}' must be strictly increasing; invalid value "
+          "at line {}.",
+          data_path, line_number);
       return false;
     }
 
-    double timestamp(values[0]);
-    Eigen::Vector3d acc(values[4], values[5], values[6]);
-    Eigen::Vector3d gyr(values[1], values[2], values[3]);
-
-    if (timestamp < last_timestamp) {
-      spdlog::critical(
-          "Timestamps in the IMU file must be in ascending order. ");
-      return false;
-    }
-
-    imu_data.push_back(ImuFrame::Create(timestamp, acc, gyr));
+    parsed_data.push_back(ImuFrame::Create(timestamp, acc, gyr));
     last_timestamp = timestamp;
   }
 
+  if (parsed_data.empty()) {
+    spdlog::critical("IMU data file contains no measurements: {}", data_path);
+    return false;
+  }
+
+  imu_data = std::move(parsed_data);
   return true;
 }
 

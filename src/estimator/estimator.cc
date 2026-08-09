@@ -14,6 +14,9 @@
 
 #include "hpgt/estimator/estimator.h"
 
+#include <cmath>
+#include <limits>
+
 #include "hpgt/estimator/factor_adder.h"
 #include "hpgt/initializer/spatial_extrinsic_initializer.h"
 #include "hpgt/initializer/time_offset_initializer.hpp"
@@ -28,8 +31,8 @@ Estimator::Estimator(SystemConfig::Ptr system_config,
   trans_spline_name_ = "trans_spline";
   rot_spline_name_ = "rot_spline";
   spline_sensor_label_ = "";
-  opt_start_time_ = -1.;
-  opt_end_time_ = -1.;
+  opt_start_time_ = std::numeric_limits<double>::lowest();
+  opt_end_time_ = std::numeric_limits<double>::max();
 }
 
 bool Estimator::Initialize(double time_margin) {
@@ -120,7 +123,7 @@ bool Estimator::Initialize(double time_margin) {
     if (t_start > opt_start_time_) {
       opt_start_time_ = t_start;
     }
-    if (t_end < opt_end_time_ || opt_end_time_ < 0) {
+    if (t_end < opt_end_time_) {
       opt_end_time_ = t_end;
     }
   }
@@ -135,7 +138,7 @@ bool Estimator::Initialize(double time_margin) {
     if (t_start > opt_start_time_) {
       opt_start_time_ = t_start;
     }
-    if (t_end < opt_end_time_ || opt_end_time_ < 0) {
+    if (t_end < opt_end_time_) {
       opt_end_time_ = t_end;
     }
   }
@@ -152,10 +155,13 @@ bool Estimator::Initialize(double time_margin) {
 
   opt_start_time_ = opt_start_time_ + time_margin;
   opt_end_time_ = opt_end_time_ - time_margin;
-  if (opt_end_time_ < 0 || opt_end_time_ < 0 ||
-      opt_end_time_ < opt_start_time_) {
+  if (!std::isfinite(opt_start_time_) || !std::isfinite(opt_end_time_) ||
+      opt_end_time_ <= opt_start_time_) {
     spdlog::critical(
-        "System spline start/stop time in body frame exception: {:.9f}/{:.9f}");
+        "Invalid system spline time range in the body-frame clock: "
+        "{:.9f} / {:.9f}.",
+        opt_start_time_, opt_end_time_);
+    return false;
   }
 
   // ===========================================================================
@@ -294,8 +300,13 @@ bool Estimator::BuildAndOptimize() {
             pose_frame->timestamp + toff_B_P >= kMeasEndTime)
           continue;
 
-        factor_adder->AddAbsPoseFactor(label, pose_frame, kPoseTransWeight,
-                                       kPoseRotWeight);
+        if (!factor_adder->AddAbsPoseFactor(label, pose_frame,
+                                            kPoseTransWeight,
+                                            kPoseRotWeight)) {
+          spdlog::critical("Failed to add an absolute pose factor for [{}].",
+                           label);
+          return false;
+        }
         ++abs_factor_count;
       }
 
@@ -327,8 +338,13 @@ for (const auto &[label, config] : sensor_data_manager_->GetAllImuConfig()) {
         imu_frame->timestamp + toff_B_I >= kMeasEndTime)
       continue;
 
-    factor_adder->AddImuAccFactor(label, imu_frame, imu_model_type, kAccWeight);
-    factor_adder->AddImuGyrFactor(label, imu_frame, imu_model_type, kGyrWeight);
+    if (!factor_adder->AddImuAccFactor(label, imu_frame, imu_model_type,
+                                       kAccWeight) ||
+        !factor_adder->AddImuGyrFactor(label, imu_frame, imu_model_type,
+                                       kGyrWeight)) {
+      spdlog::critical("Failed to add an IMU factor for [{}].", label);
+      return false;
+    }
     ++imu_factor_count;
   }
 
@@ -395,7 +411,8 @@ return summary.IsSolutionUsable();
 bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
                                    const std::string &output_traj_path) {
   // Copy the current system configuration as the basis for the output.
-  SystemConfig::Ptr output_config = system_config_;
+  SystemConfig::Ptr output_config = SystemConfig::Create();
+  *output_config = *system_config_;
 
   // ===========================================================================
 
@@ -525,12 +542,14 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
   spdlog::info("------------------- Save the result ------------------");
 
   // Save the updated system configuration (calibration parameter).
-  output_config->ToJson(output_calib_path);
+  if (!output_config->ToJson(output_calib_path)) {
+    return false;
+  }
 
   // Save the system B-spline trajectory result (denoted as T_GB).
   std::ofstream file(output_traj_path);
   if (!file.is_open()) {
-    spdlog::critical("Failed to open the output trajectory file: ",
+    spdlog::critical("Failed to open the output trajectory file: {}",
                      output_traj_path);
     return false;
   }
@@ -550,9 +569,14 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
   while (current_time < kOutputEndTime) {
     Sophus::Vector3d trans;
     Sophus::SO3d rot;
-    spline_bundle_->GetR3dSpline(trans_spline_name_)
-        .Evaluate(current_time, trans);
-    spline_bundle_->GetSo3dSpline(rot_spline_name_).Evaluate(current_time, rot);
+    if (!spline_bundle_->GetR3dSpline(trans_spline_name_)
+             .Evaluate(current_time, trans) ||
+        !spline_bundle_->GetSo3dSpline(rot_spline_name_)
+             .Evaluate(current_time, rot)) {
+      spdlog::critical("Failed to evaluate the system spline at {:.9f}.",
+                       current_time);
+      return false;
+    }
     Eigen::Quaterniond quat = rot.unit_quaternion();
 
     file << current_time << " " << trans.x() << " " << trans.y() << " "
@@ -563,6 +587,11 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
   }
 
   file.close();
+  if (!file) {
+    spdlog::critical("Failed to write the output trajectory file: {}",
+                     output_traj_path);
+    return false;
+  }
   spdlog::info("Write system B-spline trajectory to file: {}",
                output_traj_path);
 
