@@ -13,16 +13,22 @@
 // limitations under the License.
 
 #include <chrono>
+#include <filesystem>
 #include <string>
 
 #include "hpgt/initializer/spatial_extrinsic_initializer.h"
 #include "hpgt/initializer/time_offset_initializer.hpp"
 
-int main() {
+int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::info);
 
-  std::string work_dir = "../../resource/test_data";
-  std::string config_path = work_dir + "/hpgt_config.json";
+  if (argc != 2) {
+    spdlog::critical("Usage: {} <data_dir>", argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  const std::filesystem::path data_dir = argv[1];
+  const std::string config_path = (data_dir / "hpgt_config.json").string();
 
   spdlog::info("======================================================");
   spdlog::info("====== TEST: Initialize calibration parameters =======");
@@ -45,7 +51,7 @@ int main() {
     spdlog::critical("Test incomplete. ");
     std::exit(EXIT_FAILURE);
   }
-  system_config->set_data_dir(work_dir);
+  system_config->set_data_dir(data_dir.string());
 
   auto sensor_data_manager = hpgt::SensorDataManager::Create();
   if (!sensor_data_manager->LoadSensorData(system_config)) {

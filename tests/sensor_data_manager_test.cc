@@ -13,16 +13,22 @@
 // limitations under the License.
 
 // clang-format off
+#include <filesystem>
 #include <string>
 
 #include "hpgt/sensor_data/sensor_data_manager.h"
 // clang-format on
 
-int main() {
+int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::info);
 
-  std::string work_dir = "../../resource/test_data";
-  std::string config_path = work_dir + "/hpgt_config.json";
+  if (argc != 2) {
+    spdlog::critical("Usage: {} <data_dir>", argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  const std::filesystem::path data_dir = argv[1];
+  const std::string config_path = (data_dir / "hpgt_config.json").string();
 
   spdlog::info("======================================================");
   spdlog::info("=============== TEST: READ SENSOR DATA ===============");
@@ -50,7 +56,7 @@ int main() {
   // Enable info log
   spdlog::set_level(spdlog::level::info);
 
-  system_config->set_data_dir(work_dir);
+  system_config->set_data_dir(data_dir.string());
 
   // ===========================================================================
 

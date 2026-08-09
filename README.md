@@ -112,10 +112,8 @@ rm -rf ceres-solver
 
 ```bash
 cd <your-code-repo-dir>/HPGT
-
-mkdir -p build && cd build
-
-cmake .. && make -j$(nproc)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel $(nproc)
 ```
 
 Replace `your-code-repo-dir` with the actual path where you cloned or placed the repository.
@@ -142,10 +140,8 @@ run_hpgt:v0.1
 
 ```bash
 cd /hpgt
-
-mkdir -p build && cd build
-
-cmake .. && make -j$(nproc)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel $(nproc)
 ```
 
 ---
@@ -155,17 +151,17 @@ cmake .. && make -j$(nproc)
 ### Running on Simulated Data
 
 ```bash
-cd /hpgt/bin
+cd /hpgt
 
 # Run with default file structure
-./RunHPGT ../resource/simulated_data
+./build/bin/RunHPGT data/simulated
 
 # Run with full parameter specification
-./RunHPGT \
-  ../resource/simulated_data/hpgt_config.json \
-  ../resource/simulated_data \
-  ../resource/simulated_data/hpgt_output_calib.json \
-  ../resource/simulated_data/hpgt_output_traj.txt
+./build/bin/RunHPGT \
+  data/simulated/hpgt_config.json \
+  data/simulated \
+  data/simulated/hpgt_output_calib.json \
+  data/simulated/hpgt_output_traj.txt
 
 ```
 
@@ -178,9 +174,9 @@ The input config file `hpgt_config.json` is essential for controlling the estima
 1. Self-Collected Datasets
 
 ```bash
-cd /hpgt/bin
+cd /hpgt
 
-./RunHPGT ../resource/real_world_data/self_collected/V101
+./build/bin/RunHPGT data/real_world/self_collected/V101
 ```
 
 In the data folder, we provide multiple acquisition results from two devices for repeatability verification.
@@ -191,10 +187,10 @@ We also provide processed sequences from TUM-VI and EuRoC datasets, which can be
 
 ```bash
 # EuRoC dataset sequence
-./RunHPGT ../resource/real_world_data/public_benchmark/EuRoC_V203
+./build/bin/RunHPGT data/real_world/public_benchmarks/EuRoC_V203
 
 # TUM-VI dataset sequence
-./RunHPGT ../resource/real_world_data/public_benchmark/TUM_VI_room5
+./build/bin/RunHPGT data/real_world/public_benchmarks/TUM_VI_room5
 ```
 
 These will generate IMU-aligned GT trajectories based on the raw MoCap and IMU data from the public datasets, which can be directly used for SLAM algorithm benchmarking.
