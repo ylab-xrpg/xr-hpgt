@@ -15,9 +15,23 @@
 #include "hpgt/sensor_data/pose_data.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <limits>
 #include <sstream>
+
+namespace {
+
+bool IsHeaderLine(const std::string &line) {
+  std::string lower_line = line;
+  std::transform(lower_line.begin(), lower_line.end(), lower_line.begin(),
+                 [](unsigned char character) {
+                   return static_cast<char>(std::tolower(character));
+                 });
+  return lower_line.find("timestamp") != std::string::npos;
+}
+
+}  // namespace
 
 namespace hpgt {
 
@@ -41,6 +55,7 @@ bool PoseDataLoader::Load(const std::string &data_path,
   PoseSequence parsed_data;
   std::string line;
   size_t line_number = 0;
+  bool first_content_line = true;
   double last_timestamp = std::numeric_limits<double>::lowest();
   while (std::getline(file, line)) {
     ++line_number;
@@ -57,12 +72,17 @@ bool PoseDataLoader::Load(const std::string &data_path,
     }
 
     if (!ss.eof() || values.size() != 8) {
+      if (first_content_line && IsHeaderLine(line)) {
+        first_content_line = false;
+        continue;
+      }
       spdlog::critical(
           "Invalid pose data in '{}' at line {}. Expected TUM format "
           "\"timestamp(s) tx(m) ty(m) tz(m) qx qy qz qw\".",
           data_path, line_number);
       return false;
     }
+    first_content_line = false;
 
     if (!std::all_of(values.begin(), values.end(),
                      [](double element) { return std::isfinite(element); })) {

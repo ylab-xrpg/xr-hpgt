@@ -55,11 +55,13 @@ int main(int argc, char** argv) {
   const auto imu_without_header_path = output_dir / "imu_without_header.csv";
   const auto imu_with_header_path = output_dir / "imu_with_header.csv";
   const auto pose_whitespace_path = output_dir / "pose_whitespace.txt";
+  const auto pose_with_header_path = output_dir / "pose_with_header.txt";
   const auto empty_path = output_dir / "empty.txt";
   const auto wrong_columns_path = output_dir / "wrong_columns.txt";
   const auto duplicate_timestamp_path = output_dir / "duplicate_timestamp.csv";
   const auto duplicate_pose_timestamp_path =
       output_dir / "duplicate_pose_timestamp.txt";
+  const auto late_pose_header_path = output_dir / "late_pose_header.txt";
   const auto zero_quaternion_path = output_dir / "zero_quaternion.txt";
   const auto non_finite_path = output_dir / "non_finite.csv";
 
@@ -73,6 +75,10 @@ int main(int argc, char** argv) {
                  WriteFile(pose_whitespace_path,
                            "1.0   1.0  2.0\t3.0  0.0 0.0 0.0 1.0\n"
                            "2.0 4.0 5.0 6.0 0.0 0.0 0.0 1.0\n") &&
+                 WriteFile(pose_with_header_path,
+                           "# Timestamp tx ty tz qx qy qz qw\n"
+                           "1.0 1.0 2.0 3.0 0.0 0.0 0.0 1.0\n"
+                           "2.0 4.0 5.0 6.0 0.0 0.0 0.0 1.0\n") &&
                  WriteFile(empty_path, "\n  \t\n") &&
                  WriteFile(wrong_columns_path, "1,2,3\n") &&
                  WriteFile(duplicate_timestamp_path,
@@ -81,6 +87,9 @@ int main(int argc, char** argv) {
                  WriteFile(duplicate_pose_timestamp_path,
                            "1.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0\n"
                            "1.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0\n") &&
+                 WriteFile(late_pose_header_path,
+                           "1.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0\n"
+                           "timestamp tx ty tz qx qy qz qw\n") &&
                  WriteFile(zero_quaternion_path,
                            "1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0\n") &&
                  WriteFile(non_finite_path, "1000000000,nan,0,0,0,0,0\n"),
@@ -91,6 +100,7 @@ int main(int argc, char** argv) {
   hpgt::ImuSequence imu_without_header;
   hpgt::ImuSequence imu_with_header;
   hpgt::PoseSequence pose_whitespace;
+  hpgt::PoseSequence pose_with_header;
   if (!Check(hpgt::ImuDataLoader::Load(imu_without_header_path.string(),
                                        imu_without_header) &&
                  imu_without_header.size() == 2 &&
@@ -104,7 +114,12 @@ int main(int argc, char** argv) {
       !Check(hpgt::PoseDataLoader::Load(pose_whitespace_path.string(),
                                         pose_whitespace) &&
                  pose_whitespace.size() == 2,
-             "pose data with regular whitespace was not loaded")) {
+             "pose data with regular whitespace was not loaded") ||
+      !Check(hpgt::PoseDataLoader::Load(pose_with_header_path.string(),
+                                        pose_with_header) &&
+                 pose_with_header.size() == 2 &&
+                 pose_with_header.front()->timestamp == 1.,
+             "pose data with a header was not loaded")) {
     return EXIT_FAILURE;
   }
 
@@ -143,7 +158,11 @@ int main(int argc, char** argv) {
       !Check(!hpgt::PoseDataLoader::Load(duplicate_pose_timestamp_path.string(),
                                          failed_pose_load) &&
                  failed_pose_load.front()->timestamp == 42.,
-             "duplicate pose timestamps were accepted")) {
+             "duplicate pose timestamps were accepted") ||
+      !Check(!hpgt::PoseDataLoader::Load(late_pose_header_path.string(),
+                                         failed_pose_load) &&
+                 failed_pose_load.front()->timestamp == 42.,
+             "a pose header after the first content line was accepted")) {
     return EXIT_FAILURE;
   }
 

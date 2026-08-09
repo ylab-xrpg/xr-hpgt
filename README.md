@@ -1,211 +1,341 @@
-<div align="center">
+<p align="center">
+	<img src="assets/logo.png" alt="HPGT" width="400"/>
+</p>
 
-<h1>
-  <span style="color:#2980b9"><b>H</b></span>
-  <span style="color:#2980b9"><b>P</b></span>
-  <span style="color:#27ae60"><b>G</b></span>
-  <span style="color:#27ae60"><b>T</b></span>
-</h1>
-
-<h3>
-  Spatiotemporal Calibration and 
-  <span style="color:#27ae60"><b>Ground</b></span> 
-  <span style="color:#27ae60"><b>Truth</b></span> Estimation for <br>
-  <span style="color:#2980b9"><b>High</b></span>-<span style="color:#2980b9"><b>Precision</b></span> SLAM Benchmarking
-</h3>
-
-</div>
-
-
+<h2 align="center">
+	Spatiotemporal Calibration and Ground Truth Estimation for High-Precision SLAM Benchmarking
+</h2>
 
 ## 📖 Overview
-**HPGT** is an estimator that provides **h**igh-**p**recision 6-DoF localization **g**round **t**ruth (GT) based on motion capture (MoCap) systems for rigorous SLAM benchmarking. It addresses the insufficient accuracy of MoCap-based GT in existing benchmarks (such as the well-known EuRoC and TUM-VI datasets), particularly in quantifying rotational errors and inter-frame relative errors.
 
----
+### General-Purpose Multi-Sensor Estimation
+
+HPGT is a continuous-time estimator that jointly calibrates and fuses pose and
+IMU measurements to recover a high-precision 6-DoF trajectory. It supports
+multiple measurement streams observing the same rigid-body motion, even when
+their clocks and coordinate frames differ.
+
+- **High-Precision Trajectory Estimation:**
+	Combines absolute pose constraints with high-rate inertial measurements to
+	suppress short-term, high-frequency jitter and improve trajectory precision.
+
+- **Joint Spatiotemporal Calibration:**
+	Simultaneously estimates sensor extrinsics and temporal offsets in a unified
+	continuous-time optimization framework.
+
+- **Flexible Multi-Sensor Fusion:**
+	Supports a configurable collection of pose and IMU streams and allows the
+	output body frame, world frame, and clock reference to be selected.
+
+### Example: High-Precision Ground Truth for SLAM Benchmarking
+
+HPGT was originally developed to improve the precision of motion-capture
+ground truth for SLAM benchmarking. In the setup presented in
+[our paper](https://arxiv.org/abs/2512.07221), motion-capture poses are fused
+with a high-quality auxiliary IMU and measurements from a device under test
+(DUT), which may provide either poses or IMU data. The auxiliary IMU helps
+reduce motion-capture jitter, while joint spatiotemporal calibration produces a
+high-precision reference trajectory aligned with the DUT.
+
+<p align="center">
+	<img src="assets/teaser.png" alt="HPGT system overview" width="100%"/>
+</p>
 
 ## 📚 Table of Contents
 
 - [📖 Overview](#-overview)
-- [📚 Table of Contents](#-table-of-contents)
-- [✨ Features](#-features)
+- [⚡ Quick Start](#-quick-start)
 - [🛠️ Installation](#️-installation)
-  - [Manual Dependency Installation and Build](#manual-dependency-installation-and-build)
-  - [Docker Setup and Build (Recommended)](#docker-setup-and-build-recommended)
-- [🚀 Running the HPGT Estimator](#-running-the-hpgt-estimator)
-  - [Running on Simulated Data](#running-on-simulated-data)
-  - [Running on Real-World Data](#running-on-real-world-data)
-- [📄 Citation](#-citation)
+	- [Option A: Docker (Recommended)](#option-a-docker-recommended)
+	- [Option B: Manual Environment Setup](#option-b-manual-environment-setup)
+	- [Build HPGT](#build-hpgt)
+- [🚀 Run the Project](#-run-the-project)
+	- [Command-line Interface](#command-line-interface)
+	- [Run with Simulated Data](#run-with-simulated-data)
+	- [Run with Real-World Data](#run-with-real-world-data)
+	- [Run with Your Own Data](#run-with-your-own-data)
+- [⚙️ Configuration](#️-configuration)
+- [📝 Reference](#-reference)
 - [📜 License](#-license)
 - [🤝 Feedback](#-feedback)
 
 ---
 
-## ✨ Features
-- ***High Precision:*** Fuses IMU and MoCap data, leveraging their complementary strengths to improve GT accuracy, especially in mitigating high-frequency jitter in MoCap raw data.
+## ⚡ Quick Start
 
-- ***Spatiotemporal Calibration:*** Uses continuous-time estimation for joint spatiotemporal calibration of MoCap, IMU, and the device under test (DUT, which may provide either pose or IMU data), producing GT trajectories aligned with the DUT’s clock and coordinate frame.
+The commands below provide a minimal end-to-end run using Docker.
 
-<p align="center">
-  <img src="docs/teaser.png" alt="teaser" width="800">
-</p>
+```bash
+# 1) Clone and enter the repository
+git clone https://github.com/ylab-xrpg/xr-hpgt.git hpgt
+cd hpgt
+
+# 2) Build the Docker image
+docker build -t hpgt_service:test .
+
+# 3) Launch the container
+docker run --rm -it \
+	-v "$(pwd):/hpgt" \
+	-w /hpgt \
+	hpgt_service:test \
+	/bin/bash
+
+# 4) Build the project inside the container
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+
+# 5) Run the simulated example
+./build/bin/RunHPGT data/simulated
+```
 
 ---
 
 ## 🛠️ Installation
 
-### Manual Dependency Installation and Build
+HPGT is primarily developed and tested on Ubuntu 20.04 with C++17 and CMake
+3.16 or newer. The versions below match the provided Docker environment.
 
-This project is primarily developed and tested on Ubuntu 20.04. We recommend using this environment for smooth installation.
+### Option A: Docker (Recommended)
 
-1. Install required third-party libraries:
+Clone the repository and build the image from the project root:
+
+```bash
+git clone https://github.com/ylab-xrpg/xr-hpgt.git hpgt
+cd hpgt
+docker build -t hpgt_service:test .
+```
+
+Run the container with the repository mounted as the workspace:
+
+```bash
+docker run --rm -it \
+	-v "$(pwd):/hpgt" \
+	-w /hpgt \
+	hpgt_service:test \
+	/bin/bash
+```
+
+### Option B: Manual Environment Setup
+
+Clone the repository and enter the project directory first:
+
+```bash
+git clone https://github.com/ylab-xrpg/xr-hpgt.git hpgt
+cd hpgt
+```
+
+Install the required system dependencies:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential cmake git curl unzip libgoogle-glog-dev libgflags-dev libatlas-base-dev libsuitesparse-dev libjsoncpp-dev
-
-# Install nlohmann_json 3.11.3
-git clone https://gitee.com/mirrors/json.git --branch v3.11.3 --single-branch
-mkdir -p json/build && cd json/build
-cmake ..
-make -j$(nproc)
-sudo make install
-cd ../..
-rm -rf json
-
-# Install spdlog 1.14.0
-git clone https://github.com/gabime/spdlog.git --branch v1.14.0 --single-branch
-mkdir -p spdlog/build && cd spdlog/build
-cmake ..
-make -j$(nproc)
-sudo make install
-cd ../..
-rm -rf spdlog
-
-# Install Eigen3 3.3.7
-git clone https://gitlab.com/libeigen/eigen.git --branch 3.3.7 --single-branch
-mkdir -p eigen/build && cd eigen/build
-cmake ..
-make install
-cd ../..
-rm -rf eigen
-
-# Install Sophus 1.22.10
-git clone https://github.com/strasdat/Sophus.git --branch 1.22.10 --single-branch
-mkdir -p Sophus/build && cd Sophus/build
-cmake ..
-make -j$(nproc)
-sudo make install
-cd ../..
-rm -rf Sophus
-
-# Install Ceres Solver 2.2.0
-git clone https://github.com/ceres-solver/ceres-solver.git --branch 2.2.0 --single-branch
-mkdir -p ceres-solver/build && cd ceres-solver/build
-cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
-make -j$(nproc)
-sudo make install
-cd ../..
-rm -rf ceres-solver
+sudo apt-get install -y --no-install-recommends \
+	build-essential cmake git curl ca-certificates unzip \
+	libgoogle-glog-dev libgflags-dev libatlas-base-dev libsuitesparse-dev
 ```
 
-2. Build HPGT:
+Install the required third-party libraries from source:
 
 ```bash
-cd <your-code-repo-dir>/HPGT
+# Optional: use a sibling directory for source builds
+mkdir -p ../hpgt_3rdparty && cd ../hpgt_3rdparty
+
+# nlohmann/json 3.11.3
+git clone --depth 1 --branch v3.11.3 https://github.com/nlohmann/json.git
+cmake -S json -B json/build -DJSON_BuildTests=OFF
+cmake --build json/build -j"$(nproc)"
+sudo cmake --install json/build
+
+# spdlog 1.14.0
+git clone --depth 1 --branch v1.14.0 https://github.com/gabime/spdlog.git
+cmake -S spdlog -B spdlog/build -DSPDLOG_BUILD_TESTS=OFF
+cmake --build spdlog/build -j"$(nproc)"
+sudo cmake --install spdlog/build
+
+# Eigen 3.3.7
+git clone --depth 1 --branch 3.3.7 https://gitlab.com/libeigen/eigen.git
+cmake -S eigen -B eigen/build
+sudo cmake --install eigen/build
+
+# Sophus 1.22.10
+git clone --depth 1 --branch 1.22.10 https://github.com/strasdat/Sophus.git
+cmake -S Sophus -B Sophus/build
+cmake --build Sophus/build -j"$(nproc)"
+sudo cmake --install Sophus/build
+
+# Ceres Solver 2.2.0
+git clone --depth 1 --branch 2.2.0 https://github.com/ceres-solver/ceres-solver.git
+cmake -S ceres-solver -B ceres-solver/build \
+	-DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
+cmake --build ceres-solver/build -j"$(nproc)"
+sudo cmake --install ceres-solver/build
+```
+
+### Build HPGT
+
+After environment setup, return to the repository root and build HPGT:
+
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel $(nproc)
+cmake --build build -j"$(nproc)"
 ```
 
-Replace `your-code-repo-dir` with the actual path where you cloned or placed the repository.
+Executables and libraries are generated under `build/bin` and `build/lib`,
+respectively.
 
-### Docker Setup and Build (Recommended)
-
-1. Build the Docker image:
-
-```bash
-cd <your-code-repo-dir>
-
-docker build -f ./Dockerfile -t run_hpgt:v0.1 .
-```
-
-2. Run the Docker container interactively with your current directory mounted:
-
-```bash
-docker run -it --name test_hpgt \
--v $(pwd):/hpgt \
-run_hpgt:v0.1
-```
-
-3. Inside the running container, build the project:
-
-```bash
-cd /hpgt
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel $(nproc)
-```
+> **Conda note:** An active Conda environment may cause CMake to mix a Conda
+> `fmt` or `gflags` package with the system `spdlog` or Ceres installation.
+> Deactivate Conda before configuring a clean build. If necessary, explicitly
+> select a consistent installation with `fmt_DIR` and `gflags_DIR`; do not
+> hard-code local dependency paths in `CMakeLists.txt`.
 
 ---
 
-## 🚀 Running the HPGT Estimator
+## 🚀 Run the Project
 
-### Running on Simulated Data
+### Command-line Interface
 
-```bash
-cd /hpgt
+`RunHPGT` accepts either a dataset directory or four explicit paths:
 
-# Run with default file structure
-./build/bin/RunHPGT data/simulated
-
-# Run with full parameter specification
-./build/bin/RunHPGT \
-  data/simulated/hpgt_config.json \
-  data/simulated \
-  data/simulated/hpgt_output_calib.json \
-  data/simulated/hpgt_output_traj.txt
-
+```text
+RunHPGT <work_directory>
+RunHPGT <config_path> <input_data_dir> <output_calib_path> <output_traj_path>
 ```
 
-We simulate two pose sequences (`mocap.txt` and `dut.txt`) and two IMU sequences (`imu_0.txt` and `imu_1.txt`) to test the estimator’s ability to handle fusion across different sensors. The MoCap data is treated as both the body frame and the global reference. The refined trajectory output is stored in `hpgt_output_traj.txt` and can be compared with the ground truth in `ground_truth.txt`. Calibration results are saved in `hpgt_output_calib.json`. The estimator accurately recovers the spatiotemporal parameters and suppresses noise, yielding a high-precision trajectory.
+The compact form resolves the following paths automatically:
 
-The input config file `hpgt_config.json` is essential for controlling the estimator's behavior. It defines the sensor setup, noise models, and optimization settings. Please modify as needed.
+```text
+<work_directory>/hpgt_config.json
+<work_directory>/hpgt_output_calib.json
+<work_directory>/hpgt_output_traj.txt
+```
 
-### Running on Real-World Data
+The explicit form can be used when the configuration, input data, and output
+files should reside in different directories. Parent directories for both
+output files must already exist.
 
-1. Self-Collected Datasets
+### Run with Simulated Data
+
+Compact form:
 
 ```bash
-cd /hpgt
+./build/bin/RunHPGT data/simulated
+```
 
+Explicit form:
+
+```bash
+./build/bin/RunHPGT \
+	data/simulated/hpgt_config.json \
+	data/simulated \
+	data/simulated/hpgt_output_calib.json \
+	data/simulated/hpgt_output_traj.txt
+```
+
+The example contains two pose sequences (`mocap.txt` and `dut.txt`) and two IMU
+sequences (`imu_0.txt` and `imu_1.txt`). The estimated trajectory can be
+compared with `ground_truth.txt`.
+
+### Run with Real-World Data
+
+Ten self-collected repeatability sequences are provided under
+`data/real_world/self_collected`:
+
+```bash
 ./build/bin/RunHPGT data/real_world/self_collected/V101
 ```
 
-In the data folder, we provide multiple acquisition results from two devices for repeatability verification.
-
-2. Public Benchmark Datasets
-  
-We also provide processed sequences from TUM-VI and EuRoC datasets, which can be run as follows:
+Processed EuRoC and TUM-VI sequences are under
+`data/real_world/public_benchmarks`:
 
 ```bash
-# EuRoC dataset sequence
+# EuRoC V2_03
 ./build/bin/RunHPGT data/real_world/public_benchmarks/EuRoC_V203
 
-# TUM-VI dataset sequence
+# TUM-VI room5
 ./build/bin/RunHPGT data/real_world/public_benchmarks/TUM_VI_room5
 ```
 
-These will generate IMU-aligned GT trajectories based on the raw MoCap and IMU data from the public datasets, which can be directly used for SLAM algorithm benchmarking.
+### Run with Your Own Data
 
-**Note:** In practical applications, we recommend fusing a higher-precision IMU to assist in mitigating MoCap jitter, rather than the IMU of the DUT. Our estimator essentially fuses arbitrary numbers and combinations of IMU and pose measurements to perform spatiotemporal calibration and achieve optimal trajectory estimation. You can modify the configuration file according to your needs and specify arbitrary numbers and combinations of sensors.
+Organize the configuration and sensor files in one directory when using the
+compact form:
+
+```text
+your_dataset/
+├── hpgt_config.json
+├── pose_0.txt
+├── pose_1.txt
+├── imu_0.txt
+└── imu_1.txt
+```
+
+File names and reference-frame choices are defined in `hpgt_config.json`. A
+common setup uses one absolute pose stream, such as a motion-capture trajectory,
+together with one IMU. Additional pose and IMU streams can be added as needed,
+provided that they observe the same rigid-body motion and satisfy the
+configuration requirements below.
+
+Pose files use the TUM text format:
+
+```text
+timestamp_s tx_m ty_m tz_m qx qy qz qw
+```
+
+Timestamps must be finite and strictly increasing. Translation is measured in
+metres, and quaternions use `x, y, z, w` order. Blank lines and normal runs of
+whitespace are accepted. An optional header is detected on the first non-empty
+line by the word `timestamp`.
+
+IMU files use comma-separated columns:
+
+```text
+timestamp_ns, wx_rad_s, wy_rad_s, wz_rad_s, ax_m_s2, ay_m_s2, az_m_s2
+```
+
+Whitespace around commas is accepted. An optional header is detected only on
+the first non-empty line by the word `timestamp`. Angular velocity is measured
+in radians per second and acceleration in metres per second squared.
+
+The output trajectory uses the pose-file layout and represents `T_G_B`: the
+body-frame pose in the gravity-aligned system world frame, timestamped in the
+body-frame clock.
 
 ---
 
-## 📄 Citation
+## ⚙️ Configuration
 
-For more technical details, please refer to our paper:
+HPGT is configured through `hpgt_config.json`. Start from the
+[configuration template](data/simulated/config_template.json) and see the
+[complete configuration reference](docs/configuration.md) for every field,
+default value, unit, IMU model, and coordinate-frame convention.
 
-- Shu Z, Bei S, Li L, et al. Spatiotemporal Calibration and Ground Truth Estimation for High-Precision SLAM Benchmarking in Extended Reality. *IEEE Transactions on Visualization and Computer Graphics*, 2025, **31**(11): 9899-9909. \[[paper-TVCG](https://ieeexplore.ieee.org/abstract/document/11190003/)\] \[[paper-arXiv](https://arxiv.org/pdf/2512.07221)\]
+Key requirements:
 
-If you find this project useful in your research, please cite the BibTeX below:
+- Configure at least one pose sensor and at least two sensors in total.
+- Exactly one pose or IMU sensor must set `body_frame_flag` to `true`.
+- Exactly one pose sensor must set `world_frame_flag` to `true`.
+- The world-frame pose sensor must use absolute pose measurements.
+- Only pose nodes with `abs_pose_flag: true` currently contribute pose factors;
+  relative-pose factors are not implemented in this release.
+
+The calibration output has the input JSON schema and can be reused for fixed
+temporal and spatial calibration. Current bias-initialization and additional
+IMU-intrinsic serialization limitations are documented in the configuration
+reference.
+
+---
+
+## 📝 Reference
+
+For technical details, refer to:
+
+- Shu Z, Bei S, Li L, et al. Spatiotemporal Calibration and Ground Truth
+  Estimation for High-Precision SLAM Benchmarking in Extended Reality. *IEEE
+  Transactions on Visualization and Computer Graphics*, 2025, **31**(11):
+  9899-9909. [[IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/11190003)]
+  [[arXiv](https://arxiv.org/pdf/2512.07221)]
+
+If you use HPGT in your research, please cite:
 
 ```bibtex
 @article{shu2025spatiotemporal,
@@ -221,8 +351,6 @@ If you find this project useful in your research, please cite the BibTeX below:
 }
 ```
 
----
-
 ## 📜 License
 
 Copyright 2025 Yongjiang Laboratory
@@ -231,18 +359,18 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.
+limitations under the License. See [LICENSE](LICENSE) for the full text.
 
 ---
 
 ## 🤝 Feedback
 
-If you encounter any issues or have questions while using HPGT, please feel free to provide feedback. We welcome your suggestions and contributions to improve this project.
-
----
+If you encounter any issues or have questions while using HPGT, please feel
+free to provide feedback. We welcome your suggestions and contributions to
+improve this project.
