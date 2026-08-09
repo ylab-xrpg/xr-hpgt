@@ -44,14 +44,14 @@ bool P2PExtrinsicInitializer::EstimateFromSeq(const PoseSequence &pose_seq_i,
       start_time_i > start_time_j ? start_time_i : start_time_j;
   double joint_end_time = end_time_i < end_time_j ? end_time_i : end_time_j;
   if (joint_start_time < 0) {
-    spdlog::warn("Start time for P2P initialization is negative, set to 0. ");
+    spdlog::warn("P2P initialization start time is negative; setting it to 0.");
     joint_start_time = 0.;
   }
   if (joint_start_time > joint_end_time) {
     spdlog::critical(
         "Timestamp exception in P2P initialization: {:.9f} / {:.9f}.",
         joint_start_time, joint_end_time);
-    spdlog::critical("Start time should be less than end time. ");
+    spdlog::critical("The start time must be earlier than the end time.");
 
     return false;
   }
@@ -60,6 +60,7 @@ bool P2PExtrinsicInitializer::EstimateFromSeq(const PoseSequence &pose_seq_i,
 
   // Step 2: Construct the solver elements from pose sequences.
   P2PSolverElements solver_elements;
+  solver_elements.reserve(pose_seq_i.size());
 
   // We use pose sequence 1 as the baseline.
   auto reference_pose_ptr = pose_seq_i.begin();
@@ -135,14 +136,14 @@ bool P2PExtrinsicInitializer::EstimateFromSeq(const PoseSequence &pose_seq_i,
   if ((high_quality_num + low_quality_num) < min_element_num_) {
     spdlog::critical(
         "Insufficient solver elements for initializing the P2P extrinsic "
-        "parameters. Please increase the motion duration and motion stimuli. ");
+        "parameters. Please increase the motion duration and excitation.");
     return false;
   }
   if (low_quality_num > high_quality_num) {
     spdlog::warn(
         "Insufficient motion stimuli in P2P extrinsic parameters "
         "initialization, may lead to inaccurate calibration results, please "
-        "perform more rapid rotation. ");
+        "perform faster rotations.");
   }
 
   // We need to control the scale of the linear solver and prioritize
@@ -178,8 +179,8 @@ bool P2PExtrinsicInitializer::EstimateFromSeq(const PoseSequence &pose_seq_i,
   // (P2 to P1).
   if (!SolveAXXB(target_elements, trans_Pi_Pj, rot_q_Pi_Pj)) {
     spdlog::critical(
-        "Fail to solve AXXB problem in P2P extrinsic parameters "
-        "initialization");
+        "Failed to solve the AXXB problem during P2P extrinsic parameter "
+        "initialization.");
     return false;
   }
 
@@ -194,8 +195,8 @@ bool P2PExtrinsicInitializer::EstimateFromSeq(const PoseSequence &pose_seq_i,
   // frames (W2 to W1).
   if (!SolveUmeyama(target_elements, trans_Wi_Wj, rot_q_Wi_Wj)) {
     spdlog::critical(
-        "Fail to solve Umeyama problem in P2P extrinsic parameters "
-        "initialization");
+        "Failed to solve the Umeyama problem during P2P extrinsic parameter "
+        "initialization.");
     return false;
   }
 
@@ -342,7 +343,7 @@ bool P2PExtrinsicInitializer::SolveUmeyama(
   if (singular_values.head(kPointDim - 1).array().abs().maxCoeff() <
       std::numeric_limits<double>::epsilon()) {
     spdlog::critical(
-        "Degenerate covariance rank, unable to achieve Umeyama alignment. ");
+        "Degenerate covariance rank; unable to perform Umeyama alignment.");
     return false;
   }
 

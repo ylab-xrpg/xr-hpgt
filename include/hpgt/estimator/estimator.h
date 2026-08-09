@@ -59,7 +59,7 @@ class Estimator {
    * @brief Initialize all states to be optimized in our system, including
    * time-invariant calibration parameters and time-varying spline functions.
    *
-   * @param[in] time_margin Time margin for constructing spline fuctions.
+   * @param[in] time_margin Time margin for constructing spline functions.
    * @return True if the system states are initialized.
    */
   bool Initialize(double time_margin = 0.01);

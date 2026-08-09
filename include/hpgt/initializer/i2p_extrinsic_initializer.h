@@ -36,7 +36,7 @@ struct I2PSolverElement {
   using Ptr = std::shared_ptr<I2PSolverElement>;
 
   /**
-   * @brief Construct a I2P extrinsic parameter solver element.
+   * @brief Construct an I2P extrinsic parameter solver element.
    *
    * @param[in] integrator IMU preintegration result over a time interval.
    * @param[in] p_start Translational part of the pose measurement at the start

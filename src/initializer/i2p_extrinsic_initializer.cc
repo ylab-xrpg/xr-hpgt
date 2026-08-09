@@ -39,14 +39,14 @@ bool I2PExtrinsicInitializer::EstimateFromSeq(
   double joint_end_time =
       pose_end_time < imu_end_time ? pose_end_time : imu_end_time;
   if (joint_start_time < 0) {
-    spdlog::warn("Start time for I2P initialization is negative, set to 0. ");
+    spdlog::warn("I2P initialization start time is negative; setting it to 0.");
     joint_start_time = 0.;
   }
   if (joint_start_time > joint_end_time) {
     spdlog::critical(
         "Timestamp exception in I2P initialization: {:.9f} / {:.9f}.",
         joint_start_time, joint_end_time);
-    spdlog::critical("Start time should be less than end time. ");
+    spdlog::critical("The start time must be earlier than the end time.");
 
     return false;
   }
@@ -55,6 +55,7 @@ bool I2PExtrinsicInitializer::EstimateFromSeq(
 
   // Step 2: Construct the solver elements from pose and IMU sequences.
   I2PSolverElements solver_elements;
+  solver_elements.reserve(pose_seq.size());
 
   auto reference_pose_ptr = pose_seq.begin();
   double reference_time, current_time, time_interval;
@@ -128,15 +129,15 @@ bool I2PExtrinsicInitializer::EstimateFromSeq(
   // Step 3: Select the solver elements, prioritizing high quality.
   if ((high_quality_num + low_quality_num) < min_element_num_) {
     spdlog::critical(
-        "Insufficient solver elements for initializing the i2p extrinsic "
-        "parameters. Please increase the motion duration and motion stimuli. ");
+        "Insufficient solver elements for initializing the I2P extrinsic "
+        "parameters. Please increase the motion duration and excitation.");
     return false;
   }
   if (low_quality_num > high_quality_num) {
     spdlog::warn(
         "Insufficient motion stimuli in I2P extrinsic parameters "
         "initialization, may lead to inaccurate calibration results, please "
-        "perform more rapid rotation. ");
+        "perform faster rotations.");
   }
 
   // We need to control the scale of the linear solver and prioritize
@@ -203,7 +204,7 @@ bool I2PExtrinsicInitializer::Preintegrate(const ImuSequence &imu_seq,
   ImuSequence integ_data;
 
   if (imu_seq.size() < 2) {
-    spdlog::error("Insufficient IMU measurements to perform preintegration. ");
+    spdlog::error("Insufficient IMU measurements to perform preintegration.");
     integrator = nullptr;
     return false;
   }
@@ -262,11 +263,11 @@ bool I2PExtrinsicInitializer::Preintegrate(const ImuSequence &imu_seq,
   // ===========================================================================
 
   // Step 2: Check the IMU data.
-  // Loop through and ensure we do not have an zero dt values
+  // Loop through and ensure there are no zero time intervals.
   for (size_t i = 0; i < integ_data.size() - 1; ++i) {
-    // This shouldn not happen.
+    // This should not happen.
     if (integ_data.at(i + 1)->timestamp < integ_data.at(i)->timestamp) {
-      spdlog::error("Preintegration data error, timestamp decrease. ");
+      spdlog::error("Preintegration data error: timestamps decreased.");
       return false;
     }
 
@@ -302,7 +303,7 @@ bool I2PExtrinsicInitializer::Preintegrate(const ImuSequence &imu_seq,
     spdlog::debug(
         "There are only two IMU data for preintegration within ({:.9f}, "
         "{:.9f}). "
-        "Generate an extra IMU measurement at {:.9f}. ",
+        "Generating an extra IMU measurement at {:.9f}.",
         integ_data.front()->timestamp, integ_data.back()->timestamp,
         extra_data_time);
   }
@@ -350,7 +351,7 @@ void I2PExtrinsicInitializer::EstimateRot(
     if (screw_congruence_factor < 1) {
       screw_congruence_factor = 1. / screw_congruence_factor;
     }
-    // Robust kernal based on screw congruence theorem.
+    // Robust kernel based on the screw congruence theorem.
     double robust_kernel =
         1. / std::exp(robust_kernel_coeff_ * (screw_congruence_factor - 1));
 

@@ -38,15 +38,14 @@ bool SpatialExtrinsicInitializer::Initialize(
   }
 
   if (calib_param->world_frame_label == "") {
-    spdlog::critical("Fail to set world frame. ");
+    spdlog::critical("Failed to set the world frame.");
     return false;
   } else {
     spdlog::info("World frame is set to: [{}]", calib_param->world_frame_label);
   }
 
   if (calib_param->body_frame_label == "") {
-    spdlog::critical(
-        "The time offset initialization needs to completed before. ");
+    spdlog::critical("Time-offset initialization must be completed first.");
     return false;
   } else {
     spdlog::info("Body frame is set to:  [{}]", calib_param->body_frame_label);
@@ -58,8 +57,8 @@ bool SpatialExtrinsicInitializer::Initialize(
       calib_param->gravity_aligned = true;
     }
     spdlog::info(
-        "Skip initialization as the spatial extrinsic parameters need to be "
-        "fixed. ");
+        "Skipping initialization because the spatial extrinsic parameters "
+        "are fixed.");
     return true;
   }
 
@@ -178,7 +177,7 @@ bool SpatialExtrinsicInitializer::Initialize(
   // Step 4: Print the final results.
   // Spatial extrinsic parameters for pose sensors.
   for (const auto &[label, config] : data_manager->GetAllPoseConfig()) {
-    spdlog::info("- Spatial extrinsic parameters for [{}]. ", label);
+    spdlog::info("- Spatial extrinsic parameters for [{}].", label);
 
     Eigen::Vector3d trans_B_Pi = calib_param->trans_B_Pi.at(label);
     Eigen::Quaterniond rot_q_B_Pi =
@@ -189,38 +188,44 @@ bool SpatialExtrinsicInitializer::Initialize(
 
     // Body frame.
     spdlog::info(
-        "Translation (tran_BP) for body frame is initialized to:  [{:.6f}, "
+        "Translation (trans_BP) for the body frame is initialized to:  "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_B_Pi.x(), trans_B_Pi.y(), trans_B_Pi.z());
     spdlog::info(
-        "Rotation (rot_q_BP) for body frame is initialized to:    [{:.6f}, "
+        "Rotation (rot_q_BP) for the body frame is initialized to:    "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_B_Pi.x(), rot_q_B_Pi.y(), rot_q_B_Pi.z(), rot_q_B_Pi.w());
 
     // World frame.
     spdlog::info(
-        "Translation (tran_GW) for world frame is initialized to: [{:.6f}, "
+        "Translation (trans_GW) for the world frame is initialized to: "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_G_Wi.x(), trans_G_Wi.y(), trans_G_Wi.z());
     spdlog::info(
-        "Rotation (rot_q_GW) for world frame is initialized to:   [{:.6f}, "
+        "Rotation (rot_q_GW) for the world frame is initialized to:   "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_G_Wi.x(), rot_q_G_Wi.y(), rot_q_G_Wi.z(), rot_q_G_Wi.w());
   }
 
   // Spatial extrinsic parameters for IMUs.
   for (const auto &[label, config] : data_manager->GetAllImuConfig()) {
-    spdlog::info("- Spatial extrinsic parameters for [{}]. ", label);
+    spdlog::info("- Spatial extrinsic parameters for [{}].", label);
 
     Eigen::Vector3d trans_B_Ii = calib_param->trans_B_Ii.at(label);
     Eigen::Quaterniond rot_q_B_Ii =
         calib_param->rot_B_Ii.at(label).unit_quaternion();
     spdlog::info(
-        "Translation (tran_BI) for body frame is initialized to:  [{:.6f}, "
+        "Translation (trans_BI) for the body frame is initialized to:  "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_B_Ii.x(), trans_B_Ii.y(), trans_B_Ii.z());
     spdlog::info(
-        "Rotation (rot_q_BI) for body frame is initialized to:    [{:.6f}, "
+        "Rotation (rot_q_BI) for the body frame is initialized to:    "
+        "[{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_B_Ii.x(), rot_q_B_Ii.y(), rot_q_B_Ii.z(), rot_q_B_Ii.w());
   }

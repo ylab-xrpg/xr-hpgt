@@ -35,7 +35,7 @@ struct IMUIntrinsic {
 
   using Ptr = std::shared_ptr<IMUIntrinsic>;
 
-  // Construct a IMU intrinsic object.
+  // Construct an IMU intrinsic object.
   IMUIntrinsic() {
     acc_bias = Sophus::Vector3d::Zero();
     gyr_bias = Sophus::Vector3d::Zero();

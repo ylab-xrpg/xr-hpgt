@@ -98,13 +98,13 @@ class FactorAdder {
 
   /**
    * @brief Given a timestamp of sensor measurement (in the body frame's clock),
-   * return the time range of B-spline meta data. Ensure B-spline data
+   * return the time range of B-spline metadata. Ensure B-spline data
    * corresponding to sensor measurements can be obtained when the time offset
    * changes during the optimization.
    *
    * @param[in] meas_time Timestamp of sensor measurement.
-   * @param[in] min_time Minimum timestamp of meta data.
-   * @param[in] max_time Maximum timestamp of meta data.
+   * @param[in] min_time Minimum timestamp of metadata.
+   * @param[in] max_time Maximum timestamp of metadata.
    * @return True if the maximum and minimum timestamps of the metadata can be
    * calculated.
    */
@@ -117,7 +117,7 @@ class FactorAdder {
    * @param[in] param_block_vector A vector to store pointers to the parameter
    * blocks.
    * @param[in] spline The translational spline object containing knot data.
-   * @param[in] spline_meta Spline meta data to be added.
+   * @param[in] spline_meta Spline metadata to be added.
    */
   void AddR3dKnotData(std::vector<double*>& param_block_vector,
                       const SplineBundleType::R3dSplineType& spline,
@@ -129,7 +129,7 @@ class FactorAdder {
    * @param[in] param_block_vector A vector to store pointers to the parameter
    * blocks.
    * @param[in] spline The rotational spline object containing knot data.
-   * @param[in] spline_meta Spline meta data to be added.
+   * @param[in] spline_meta Spline metadata to be added.
    */
   void AddSo3dKnotsData(std::vector<double*>& param_block_vector,
                         const SplineBundleType::So3dSplineType& spline,

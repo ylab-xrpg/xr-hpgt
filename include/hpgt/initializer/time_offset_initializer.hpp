@@ -90,8 +90,7 @@ class TimeOffsetInitializer {
     size_t sample_size_i = sample_timestamps_i.size();
     size_t sample_size_j = sample_timestamps_j.size();
     if (sample_size_i < 2 || sample_size_j < 2) {
-      spdlog::critical(
-          "Insufficient data used to initialize the time offset. ");
+      spdlog::critical("Insufficient data to initialize the time offset.");
       return false;
     }
 
@@ -178,14 +177,15 @@ class TimeOffsetInitializer {
     double end_time = seq.back()->timestamp - velocity_calc_range_;
     if (start_time < 0) {
       spdlog::warn(
-          "Start time for time offset initialization is negative, set to 0. ");
+          "Time-offset initialization start time is negative; setting it to "
+          "0.");
       start_time = 0.;
     }
     if (start_time > end_time) {
       spdlog::critical(
           "Timestamp exception in time offset initialization: {:.9f} / {:.9f}.",
           start_time, end_time);
-      spdlog::critical("Start time should be less than end time. ");
+      spdlog::critical("The start time must be earlier than the end time.");
       return false;
     }
     double duration = end_time - start_time;
@@ -214,7 +214,7 @@ class TimeOffsetInitializer {
             seq, time_curr, single_angular_vel);
       } else {
         spdlog::critical(
-            "Invalid sequence type in generating angular velocity. ");
+            "Invalid sequence type while generating angular velocity.");
         return false;
       }
 

@@ -34,11 +34,11 @@ bool IsValidQuaternion(const Eigen::Quaterniond& quaternion) {
 namespace hpgt {
 
 bool SystemConfig::FromJson(const std::string& input_path) {
-  spdlog::info("Read system config from file: {}", input_path);
+  spdlog::info("Reading system config from: {}", input_path);
 
   std::ifstream input_file(input_path);
   if (!input_file.is_open()) {
-    spdlog::critical("Failed to open the input JSON file of system config: {} ",
+    spdlog::critical("Failed to open the input system config file: {}",
                      input_path);
     return false;
   }
@@ -70,7 +70,7 @@ bool SystemConfig::FromJson(const std::string& input_path) {
 }
 
 bool SystemConfig::ToJson(const std::string& output_path) {
-  spdlog::info("Write system config to file: {}", output_path);
+  spdlog::info("Writing system config to: {}", output_path);
 
   std::ofstream output_file(output_path);
   if (!output_file.is_open()) {
@@ -103,19 +103,21 @@ bool SystemConfig::CheckAndPrintConfig() {
     spdlog::critical("B-spline knot interval must be finite and positive.");
     return false;
   }
-  spdlog::info("Knots interval of the B-spline: {:.3f}", spline_knot_interval_);
+  spdlog::info("B-spline knot interval:         {:.3f}", spline_knot_interval_);
   if (!std::isfinite(max_toff_change_)) {
     spdlog::critical("Maximum time-offset change must be finite.");
     return false;
   }
   if (max_toff_change_ < 0.01) {
-    spdlog::warn("Max change in time offset is too small. ");
+    spdlog::warn(
+        "Maximum time-offset change is too small; clamping it to 0.01 s.");
     max_toff_change_ = 0.01;
   } else if (max_toff_change_ > 0.5) {
-    spdlog::warn("Max change in time offset is too large. ");
+    spdlog::warn(
+        "Maximum time-offset change is too large; clamping it to 0.5 s.");
     max_toff_change_ = 0.5;
   }
-  spdlog::info("Max change in time offset:      {:.3f}", max_toff_change_);
+  spdlog::info("Maximum time-offset change:     {:.3f}", max_toff_change_);
   if (!std::isfinite(gravity_magnitude_) || gravity_magnitude_ <= 0.) {
     spdlog::critical("Gravity magnitude must be finite and positive.");
     return false;
@@ -170,15 +172,14 @@ bool SystemConfig::CheckAndPrintConfig() {
     spdlog::info("- Pose node [{}].", node.file_name);
 
     // Basic sensor properties.
-    spdlog::info("Whether as body frame:  {}", node.body_frame_flag);
-    spdlog::info("Whether as world frame: {}", node.world_frame_flag);
-    spdlog::info("Whether as absolute pose measurement: {}",
-                 node.abs_pose_flag);
+    spdlog::info("Used as the body frame:  {}", node.body_frame_flag);
+    spdlog::info("Used as the world frame: {}", node.world_frame_flag);
+    spdlog::info("Provides absolute pose measurements: {}", node.abs_pose_flag);
 
     if (node.world_frame_flag && !node.abs_pose_flag) {
       spdlog::critical(
           "Absolute measurements must be used when the pose sensor is used as "
-          "the world frame. ");
+          "the world frame.");
       return false;
     }
 
@@ -240,8 +241,8 @@ bool SystemConfig::CheckAndPrintConfig() {
 
     if (!node.abs_pose_flag) {
       spdlog::info(
-          "For the relative pose measurement, we will ignore the noise std and "
-          "the world frame transformation. ");
+          "For relative pose measurements, the noise standard deviation and "
+          "world-frame transformation are ignored.");
     }
 
     // Number count.
@@ -261,10 +262,10 @@ bool SystemConfig::CheckAndPrintConfig() {
     spdlog::info("- IMU node [{}].", node.file_name);
 
     // Basic sensor properties.
-    spdlog::info("Whether as body frame: {}", node.body_frame_flag);
+    spdlog::info("Used as the body frame: {}", node.body_frame_flag);
 
     if (node.model_type == ImuModelType::kInvalid) {
-      spdlog::warn("Invalid IMU model, set to default. ");
+      spdlog::warn("Invalid IMU model; using the 'calibrated' model.");
       node.model_type = ImuModelType::kCalibrated;
     }
     spdlog::info("IMU model type: {}", ToString(node.model_type));
@@ -335,22 +336,20 @@ bool SystemConfig::CheckAndPrintConfig() {
         "and at least one must provide pose information.");
     return false;
   } else {
-    spdlog::info(
-        "- There will be {} pose sensors and {} IMUs fused in our system. ",
-        valid_pose_count, valid_imu_count);
+    spdlog::info("- Fusing {} pose sensors and {} IMUs.", valid_pose_count,
+                 valid_imu_count);
   }
 
   if (body_frame_count != 1) {
-    spdlog::critical("There is currently {} sensor set to body frame",
+    spdlog::critical("Exactly one sensor must define the body frame; found {}.",
                      body_frame_count);
-    spdlog::critical("Exactly one sensor must be set as the body frame. ");
     return false;
   }
 
   if (world_frame_count != 1) {
-    spdlog::critical("There is currently {} sensor set to world frame",
-                     world_frame_count);
-    spdlog::critical("Exactly one sensor must be set as the world frame. ");
+    spdlog::critical(
+        "Exactly one sensor must define the world frame; found {}.",
+        world_frame_count);
     return false;
   }
 

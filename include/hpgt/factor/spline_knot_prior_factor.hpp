@@ -57,7 +57,7 @@ struct SplineKnotPriorFactor {
    * parameter blocks.
    *
    * The parameters blocks include:
-   * [ tran_knot_i | rot_knot_i | rot_knot_j | rot_knot_j ]
+   * [ trans_knot_i | rot_knot_i | trans_knot_j | rot_knot_j ]
    *
    * @tparam T Type of the parameter. (compatible with ceres::Jet for automatic
    * differentiation)

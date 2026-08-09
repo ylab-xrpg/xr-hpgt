@@ -52,7 +52,8 @@ bool InitializerHelper::GetTargetAngularVel(const ImuSequence &imu_seq,
 
   if (imu_seq.size() < 2) {
     spdlog::error(
-        "Insufficient IMU measurements to get target angle velocity. ");
+        "Insufficient IMU measurements to obtain the target angular "
+        "velocity.");
     return false;
   }
 
@@ -100,7 +101,7 @@ bool InitializerHelper::GetTargetPose(const PoseSequence &pose_seq,
   rot_q = Eigen::Quaterniond::Identity();
 
   if (pose_seq.size() < 2) {
-    spdlog::error("Insufficient pose frames to get target pose. ");
+    spdlog::error("Insufficient pose frames to obtain the target pose.");
     return false;
   }
 

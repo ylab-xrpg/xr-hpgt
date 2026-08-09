@@ -39,6 +39,7 @@ bool ParseImuLine(const std::string &line, std::vector<double> &values) {
 
   std::stringstream stream(line);
   std::string value;
+  values.reserve(7);
   while (std::getline(stream, value, ',')) {
     try {
       size_t parsed_size = 0;
@@ -71,7 +72,7 @@ ImuFrame::Ptr ImuFrame::Create(const double &t, const Eigen::Vector3d &a,
 bool ImuDataLoader::Load(const std::string &data_path, ImuSequence &imu_data) {
   std::ifstream file(data_path);
   if (!file.is_open()) {
-    spdlog::critical("Failed to open imu data file: {}", data_path);
+    spdlog::critical("Failed to open IMU data file: {}", data_path);
     return false;
   }
 

@@ -27,7 +27,7 @@ template <int Order>
 struct ImuAccFactor {
  public:
   /**
-   * @brief Construct a accelerometer factor object.
+   * @brief Construct an accelerometer factor object.
    *
    * @param[in] trans_meta Meta data for the translation spline.
    * @param[in] rot_meta Meta data for the rotation spline.
@@ -130,22 +130,14 @@ struct ImuAccFactor {
     CeresSplineHelperJet<T, Order>::template EvaluateLie<Sophus::SO3>(
         params + ROT_KNOT_OFFSET, rot_spline_fraction, rot_dt_inv_, &rot_GB,
         &rot_vel_BB, &rot_acc_BB);
-    // typename Sophus::SO3<T>::Tangent rot_vel_GB = rot_GB * rot_vel_BB;
-    // typename Sophus::SO3<T>::Tangent rot_acc_GB = rot_GB * rot_acc_BB;
-
     // Calculate the intermediate variable.
     Eigen::Matrix<T, 3, 1> gravity(T(0.), T(0.), T(gravity_magnitude_));
     Eigen::Matrix<T, 3, 3> rot_vel_BB_hat = Sophus::SO3<T>::hat(rot_vel_BB);
     Eigen::Matrix<T, 3, 3> rot_acc_BB_hat = Sophus::SO3<T>::hat(rot_acc_BB);
-    // Eigen::Matrix<T, 3, 3> rot_vel_BB_hat = Sophus::SO3<T>::hat(rot_vel_GB);
-    // Eigen::Matrix<T, 3, 3> rot_acc_BB_hat = Sophus::SO3<T>::hat(rot_acc_GB);
     Eigen::Matrix<T, 3, 1> trans_acc_GI =
         trans_acc_GB + rot_GB.matrix() *
                            (rot_acc_BB_hat + rot_vel_BB_hat * rot_vel_BB_hat) *
                            trans_BI;
-    // Eigen::Matrix<T, 3, 1> trans_acc_GI =
-    //     trans_acc_GB + (rot_acc_BB_hat + rot_vel_BB_hat * rot_vel_BB_hat) *
-    //                        (rot_GB.matrix() * trans_BI);
 
     // Calculate the predicted values.
     Eigen::Matrix<T, 3, 1> acc_pred =
@@ -164,7 +156,7 @@ struct ImuAccFactor {
   }
 
  private:
-  // Spline meta data.
+  // Spline metadata.
   SplineMeta<Order> trans_meta_, rot_meta_;
   // IMU frame with measurement information.
   ImuFrame::Ptr imu_frame_;

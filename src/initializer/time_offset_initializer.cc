@@ -60,14 +60,15 @@ bool TimeOffsetInitializer::Initialize(
 
   if (calib_param->body_frame_label == "" ||
       calib_param->body_sensor_type == SensorType::kInvalid) {
-    spdlog::critical("Fail to set body frame. ");
+    spdlog::critical("Failed to set the body frame.");
     return false;
   }
 
   // Skip initialization if time offset parameters are to be fixed.
   if (!opt_flag) {
     spdlog::info(
-        "Skip initialization as the time offset parameters need to be fixed. ");
+        "Skipping initialization because the time-offset parameters are "
+        "fixed.");
     return true;
   }
 
@@ -147,7 +148,7 @@ bool TimeOffsetInitializer::SignalCorrelation(
   if (cols_i <= kSignalMinCols || cols_j <= kSignalMinCols) {
     spdlog::critical(
         "The signal sampling point for calculating correlation must "
-        "be greater than {}. ",
+        "be greater than {}.",
         kSignalMinCols);
     return false;
   }
@@ -225,12 +226,13 @@ bool TimeOffsetInitializer::CorrelationMaxIndex(
       fitting_end_index >= correlation_function.cols()) {
     spdlog::critical(
         "The range of the correlation function is insufficient for calculating "
-        "the index of the maximum value. ");
+        "the index of the maximum value.");
     return false;
   }
 
   // Get the correlation values in range.
   std::vector<double> fitting_values;
+  fitting_values.reserve(2 * fitting_radius + 1);
   std::vector<double> fitting_index(2 * fitting_radius + 1);
   for (int i = fitting_start_index; i <= fitting_end_index; ++i) {
     fitting_values.push_back(correlation_function(i));

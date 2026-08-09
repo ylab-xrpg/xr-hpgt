@@ -40,11 +40,11 @@ bool FactorAdder::AddAbsPoseFactor(const std::string &label,
                                    const PoseFrame::Ptr &pose_frame,
                                    const double &trans_weight,
                                    const double &rot_weight) {
-  // Step 1: Calculate the meta data for the translational and rotational
+  // Step 1: Calculate the metadata for the translational and rotational
   // B-splines corresponding to the measurement.
   SplineMeta<SystemConfig::kSplineOrder> trans_meta, rot_meta;
 
-  // Calculate the start and end times of the meta data.
+  // Calculate the start and end times of the metadata.
   double meta_min_time = -1.;
   double meta_max_time = -1.;
   const double kMeasTimestamp =
@@ -62,9 +62,8 @@ bool FactorAdder::AddAbsPoseFactor(const std::string &label,
                                                 rot_spline_name_) ||
       !spline_bundle_->TimeInRangeForSo3dSpline(meta_max_time,
                                                 rot_spline_name_)) {
-    spdlog::critical(
-        "The min/max times of the spline meta exception for [{}] at {:.9f} ",
-        label, pose_frame->timestamp);
+    spdlog::critical("Invalid spline metadata range for [{}] at {:.9f}.", label,
+                     pose_frame->timestamp);
     return false;
   }
 
@@ -109,6 +108,8 @@ bool FactorAdder::AddAbsPoseFactor(const std::string &label,
   // Step 3: Organize the parameter block pointers in a vector and add the
   // residual block to the problem.
   std::vector<double *> param_block_vector;
+  param_block_vector.reserve(trans_meta.NumParameters() +
+                             rot_meta.NumParameters() + 5);
 
   // Add the spline knot data to the parameter block vector.
   AddR3dKnotData(param_block_vector,
@@ -171,11 +172,11 @@ bool FactorAdder::AddImuAccFactor(const std::string &label,
                                   const ImuFrame::Ptr &imu_frame,
                                   const ImuModelType &model_type,
                                   const double &acc_weight) {
-  // Step 1: Calculate the meta data for the translational and rotational
+  // Step 1: Calculate the metadata for the translational and rotational
   // B-splines corresponding to the measurement.
   SplineMeta<SystemConfig::kSplineOrder> trans_meta, rot_meta;
 
-  // Calculate the start and end times of the meta data.
+  // Calculate the start and end times of the metadata.
   double meta_min_time = -1.;
   double meta_max_time = -1.;
   const double kMeasTimestamp =
@@ -193,9 +194,8 @@ bool FactorAdder::AddImuAccFactor(const std::string &label,
                                                 rot_spline_name_) ||
       !spline_bundle_->TimeInRangeForSo3dSpline(meta_max_time,
                                                 rot_spline_name_)) {
-    spdlog::critical(
-        "The min/max times of the spline meta exception for [{}] at {:.9f} ",
-        label, imu_frame->timestamp);
+    spdlog::critical("Invalid spline metadata range for [{}] at {:.9f}.", label,
+                     imu_frame->timestamp);
     return false;
   }
 
@@ -240,6 +240,8 @@ bool FactorAdder::AddImuAccFactor(const std::string &label,
   // Step 3: Organize the parameter block pointers in a vector and add the
   // residual block to the problem.
   std::vector<double *> param_block_vector;
+  param_block_vector.reserve(trans_meta.NumParameters() +
+                             rot_meta.NumParameters() + 5);
 
   // Add the spline knot data to the parameter block vector.
   AddR3dKnotData(param_block_vector,
@@ -251,9 +253,9 @@ bool FactorAdder::AddImuAccFactor(const std::string &label,
   auto toff_BI_data = &calib_parameter_->toff_B_Ii_increment.at(label);
   auto trans_BI_data = calib_parameter_->trans_B_Ii.at(label).data();
   auto rot_BI_data = calib_parameter_->rot_B_Ii.at(label).data();
-  auto acc_bias_data = calib_parameter_->imu_intri.at(label)->acc_bias.data();
-  auto acc_map_coeff_data =
-      calib_parameter_->imu_intri.at(label)->acc_map_coeff.data();
+  auto &imu_intrinsic = *calib_parameter_->imu_intri.at(label);
+  auto acc_bias_data = imu_intrinsic.acc_bias.data();
+  auto acc_map_coeff_data = imu_intrinsic.acc_map_coeff.data();
 
   param_block_vector.push_back(toff_BI_data);
   param_block_vector.push_back(trans_BI_data);
@@ -297,11 +299,11 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
                                   const ImuFrame::Ptr &imu_frame,
                                   const ImuModelType &model_type,
                                   const double &gyr_weight) {
-  // Step 1: Calculate the meta data for the rotational B-spline corresponding
+  // Step 1: Calculate the metadata for the rotational B-spline corresponding
   // to the measurement.
   SplineMeta<SystemConfig::kSplineOrder> rot_meta;
 
-  // Calculate the start and end times of the meta data.
+  // Calculate the start and end times of the metadata.
   double meta_min_time = -1.;
   double meta_max_time = -1.;
   const double kMeasTimestamp =
@@ -315,9 +317,8 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
                                                 rot_spline_name_) ||
       !spline_bundle_->TimeInRangeForSo3dSpline(meta_max_time,
                                                 rot_spline_name_)) {
-    spdlog::critical(
-        "The min/max times of the spline meta exception for [{}] at {:.9f} ",
-        label, imu_frame->timestamp);
+    spdlog::critical("Invalid spline metadata range for [{}] at {:.9f}.", label,
+                     imu_frame->timestamp);
     return false;
   }
 
@@ -329,7 +330,7 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
 
   // ===========================================================================
 
-  // Step 2: Create an gyroscope factor and add parameter blocks.
+  // Step 2: Create a gyroscope factor and add parameter blocks.
   auto imu_gyr_factor = ImuGyrFactor<SystemConfig::kSplineOrder>::Create(
       rot_meta, imu_frame, calib_parameter_->toff_B_Ii.at(label), gyr_weight);
 
@@ -356,6 +357,7 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
   // Step 3: Organize the parameter block pointers in a vector and add the
   // residual block to the problem.
   std::vector<double *> param_block_vector;
+  param_block_vector.reserve(rot_meta.NumParameters() + 5);
 
   // Add the spline knot data to the parameter block vector.
   AddSo3dKnotsData(param_block_vector,
@@ -364,11 +366,10 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
   // Add the calibration data to the vector.
   auto toff_BI_data = &calib_parameter_->toff_B_Ii_increment.at(label);
   auto rot_BI_data = calib_parameter_->rot_B_Ii.at(label).data();
-  auto gyr_bias_data = calib_parameter_->imu_intri.at(label)->gyr_bias.data();
-  auto gyr_map_coeff_data =
-      calib_parameter_->imu_intri.at(label)->gyr_map_coeff.data();
-  auto rot_gyr_acc_data =
-      calib_parameter_->imu_intri.at(label)->rot_gyr_acc.data();
+  auto &imu_intrinsic = *calib_parameter_->imu_intri.at(label);
+  auto gyr_bias_data = imu_intrinsic.gyr_bias.data();
+  auto gyr_map_coeff_data = imu_intrinsic.gyr_map_coeff.data();
+  auto rot_gyr_acc_data = imu_intrinsic.rot_gyr_acc.data();
 
   param_block_vector.push_back(toff_BI_data);
   param_block_vector.push_back(rot_BI_data);
@@ -416,21 +417,20 @@ bool FactorAdder::AddSplineKnotPriorFactor(const int &index_i,
                                            const double &rot_weight) {
   // Step 1: Calculate the relative poses of the B-spline knots in the initial
   // state.
-  Eigen::Vector3d trans_i =
-      spline_bundle_->GetR3dSpline(trans_spline_name_).get_knot(index_i);
-  Sophus::SO3d rot_i =
-      spline_bundle_->GetSo3dSpline(rot_spline_name_).get_knot(index_i);
-  Eigen::Vector3d trans_j =
-      spline_bundle_->GetR3dSpline(trans_spline_name_).get_knot(index_j);
-  Sophus::SO3d rot_j =
-      spline_bundle_->GetSo3dSpline(rot_spline_name_).get_knot(index_j);
+  auto &trans_spline = spline_bundle_->GetR3dSpline(trans_spline_name_);
+  auto &rot_spline = spline_bundle_->GetSo3dSpline(rot_spline_name_);
+  const Eigen::Vector3d trans_i = trans_spline.get_knot(index_i);
+  const Sophus::SO3d rot_i = rot_spline.get_knot(index_i);
+  const Eigen::Vector3d trans_j = trans_spline.get_knot(index_j);
+  const Sophus::SO3d rot_j = rot_spline.get_knot(index_j);
 
-  Eigen::Vector3d delta_trans_prior = rot_i.inverse() * (trans_j - trans_i);
-  Sophus::SO3d delta_rot_prior = rot_i.inverse() * rot_j;
+  const Eigen::Vector3d delta_trans_prior =
+      rot_i.inverse() * (trans_j - trans_i);
+  const Sophus::SO3d delta_rot_prior = rot_i.inverse() * rot_j;
 
   // ===========================================================================
 
-  // Step 2: Create an knot prior factor and add parameter blocks.
+  // Step 2: Create a knot prior factor and add parameter blocks.
   auto knot_prior_factor = SplineKnotPriorFactor::Create(
       delta_trans_prior, delta_rot_prior, trans_weight, rot_weight);
 
@@ -442,7 +442,7 @@ bool FactorAdder::AddSplineKnotPriorFactor(const int &index_i,
   knot_prior_factor->AddParameterBlock(3);
   // The rotational component of the subsequent knot.
   knot_prior_factor->AddParameterBlock(4);
-  // Residual。
+  // Residual.
   knot_prior_factor->SetNumResiduals(6);
 
   // ===========================================================================
@@ -450,9 +450,7 @@ bool FactorAdder::AddSplineKnotPriorFactor(const int &index_i,
   // Step 3: Organize the parameter block pointers in a vector and add the
   // residual block to the problem.
   std::vector<double *> param_block_vector;
-
-  auto &trans_spline = spline_bundle_->GetR3dSpline(trans_spline_name_);
-  auto &rot_spline = spline_bundle_->GetSo3dSpline(rot_spline_name_);
+  param_block_vector.reserve(4);
 
   auto *trans_data_i =
       const_cast<double *>(trans_spline.get_knot(index_i).data());
@@ -485,7 +483,7 @@ bool FactorAdder::CalMetaMinMaxTime(const double &meas_time, double &min_time,
       (meas_time > opt_end_time_ + 2 * kMaxToffChange)) {
     spdlog::critical(
         "The specified measurement time is not within the valid time range of "
-        "the system. ");
+        "the system.");
     return false;
   }
 
@@ -516,7 +514,7 @@ void FactorAdder::AddR3dKnotData(std::vector<double *> &param_block_vector,
                                  const SplineMetaType &spline_meta) {
   for (const auto &segment : spline_meta.segments) {
     // Compute time index, 'knot_interval * 0.5' is the treatment for numerical
-    // accuracy
+    // accuracy.
     size_t index;
     double fraction;
     spline.ComputeTimeIndex(segment.start_time + segment.knot_interval * 0.5,
@@ -542,7 +540,7 @@ void FactorAdder::AddSo3dKnotsData(
     const SplineMetaType &spline_meta) {
   for (const auto &segment : spline_meta.segments) {
     // Compute time index, 'knot_interval * 0.5' is the treatment for numerical
-    // accuracy
+    // accuracy.
     size_t index;
     double fraction;
     spline.ComputeTimeIndex(segment.start_time + segment.knot_interval * 0.5,
