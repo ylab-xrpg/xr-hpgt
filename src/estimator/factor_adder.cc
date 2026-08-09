@@ -68,10 +68,13 @@ bool FactorAdder::AddAbsPoseFactor(const std::string &label,
     return false;
   }
 
-  spline_bundle_->CalculateR3dSplineMeta(
-      trans_spline_name_, {{meta_min_time, meta_max_time}}, trans_meta);
-  spline_bundle_->CalculateSo3dSplineMeta(
-      rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta);
+  if (!spline_bundle_->CalculateR3dSplineMeta(
+          trans_spline_name_, {{meta_min_time, meta_max_time}}, trans_meta) ||
+      !spline_bundle_->CalculateSo3dSplineMeta(
+          rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta)) {
+    spdlog::critical("Failed to calculate spline metadata for [{}].", label);
+    return false;
+  }
 
   // ===========================================================================
 
@@ -196,10 +199,13 @@ bool FactorAdder::AddImuAccFactor(const std::string &label,
     return false;
   }
 
-  spline_bundle_->CalculateR3dSplineMeta(
-      trans_spline_name_, {{meta_min_time, meta_max_time}}, trans_meta);
-  spline_bundle_->CalculateSo3dSplineMeta(
-      rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta);
+  if (!spline_bundle_->CalculateR3dSplineMeta(
+          trans_spline_name_, {{meta_min_time, meta_max_time}}, trans_meta) ||
+      !spline_bundle_->CalculateSo3dSplineMeta(
+          rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta)) {
+    spdlog::critical("Failed to calculate spline metadata for [{}].", label);
+    return false;
+  }
 
   // ===========================================================================
 
@@ -315,8 +321,11 @@ bool FactorAdder::AddImuGyrFactor(const std::string &label,
     return false;
   }
 
-  spline_bundle_->CalculateSo3dSplineMeta(
-      rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta);
+  if (!spline_bundle_->CalculateSo3dSplineMeta(
+          rot_spline_name_, {{meta_min_time, meta_max_time}}, rot_meta)) {
+    spdlog::critical("Failed to calculate spline metadata for [{}].", label);
+    return false;
+  }
 
   // ===========================================================================
 

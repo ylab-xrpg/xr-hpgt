@@ -19,14 +19,29 @@ namespace hpgt {
 bool SensorDataManager::LoadSensorData(const SystemConfig::Ptr &system_config) {
   spdlog::info("Load sensor data...");
 
+  if (!system_config) {
+    spdlog::critical("System config must be provided before loading data.");
+    return false;
+  }
+
   std::string data_dir = system_config->get_data_dir();
-  if (data_dir == "") {
+  if (data_dir.empty()) {
     spdlog::critical("Directory of the sensor data must be specified. ");
     return false;
   }
 
+  std::map<std::string, PoseSequence> pose_data_sequence;
+  std::map<std::string, ImuSequence> imu_data_sequence;
+  std::map<std::string, PoseDataConfig> pose_data_config;
+  std::map<std::string, ImuDataConfig> imu_data_config;
+
   // Iterate pose config and load the data.
   for (const auto &node : system_config->get_pose_config()) {
+    if (node.file_name.empty()) {
+      spdlog::warn("Skipping pose data with no file name provided.");
+      continue;
+    }
+
     std::string data_label = node.file_name;
     std::string data_path = data_dir + "/" + node.file_name;
 
@@ -37,9 +52,9 @@ bool SensorDataManager::LoadSensorData(const SystemConfig::Ptr &system_config) {
       return false;
     }
 
-    if (pose_data_sequence_.find(data_label) == pose_data_sequence_.end()) {
-      pose_data_sequence_[data_label] = std::move(data);
-      pose_data_config_[data_label] = node;
+    if (pose_data_sequence.find(data_label) == pose_data_sequence.end()) {
+      pose_data_sequence[data_label] = std::move(data);
+      pose_data_config[data_label] = node;
     } else {
       spdlog::critical("Duplicate pose label: {}", data_label);
       return false;
@@ -48,24 +63,34 @@ bool SensorDataManager::LoadSensorData(const SystemConfig::Ptr &system_config) {
 
   // Iterate imu config and load the data.
   for (const auto &node : system_config->get_imu_config()) {
+    if (node.file_name.empty()) {
+      spdlog::warn("Skipping IMU data with no file name provided.");
+      continue;
+    }
+
     std::string data_label = node.file_name;
     std::string data_path = data_dir + "/" + node.file_name;
 
     ImuSequence data;
     if (ImuDataLoader::Load(data_path, data)) {
-      spdlog::info("Load {} imu frames from {}. ", data.size(), data_label);
+      spdlog::info("Loaded {} IMU frames from {}. ", data.size(), data_label);
     } else {
       return false;
     }
 
-    if (imu_data_sequence_.find(data_label) == imu_data_sequence_.end()) {
-      imu_data_sequence_[data_label] = std::move(data);
-      imu_data_config_[data_label] = node;
+    if (imu_data_sequence.find(data_label) == imu_data_sequence.end()) {
+      imu_data_sequence[data_label] = std::move(data);
+      imu_data_config[data_label] = node;
     } else {
-      spdlog::critical("Duplicate imu label: {}", data_label);
+      spdlog::critical("Duplicate IMU label: {}", data_label);
       return false;
     }
   }
+
+  pose_data_sequence_ = std::move(pose_data_sequence);
+  imu_data_sequence_ = std::move(imu_data_sequence);
+  pose_data_config_ = std::move(pose_data_config);
+  imu_data_config_ = std::move(imu_data_config);
 
   return true;
 }
@@ -73,107 +98,115 @@ bool SensorDataManager::LoadSensorData(const SystemConfig::Ptr &system_config) {
 const PoseSequence &SensorDataManager::GetPoseSeqByLabel(
     const std::string &pose_label) const {
   static const PoseSequence empty_seq;
-  if (pose_data_sequence_.find(pose_label) == pose_data_sequence_.end()) {
+  const auto iterator = pose_data_sequence_.find(pose_label);
+  if (iterator == pose_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get pose sequence, invalid label: {} ",
                      pose_label);
     return empty_seq;
   }
 
-  return pose_data_sequence_.at(pose_label);
+  return iterator->second;
 }
 
 const ImuSequence &SensorDataManager::GetImuSeqByLabel(
     const std::string &imu_label) const {
   static const ImuSequence empty_seq;
-  if (imu_data_sequence_.find(imu_label) == imu_data_sequence_.end()) {
+  const auto iterator = imu_data_sequence_.find(imu_label);
+  if (iterator == imu_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get IMU sequence, invalid label: {} ",
                      imu_label);
     return empty_seq;
   }
 
-  return imu_data_sequence_.at(imu_label);
+  return iterator->second;
 }
 
 double SensorDataManager::GetPoseStartTimeByLabel(
     const std::string &pose_label) const {
-  if (pose_data_sequence_.find(pose_label) == pose_data_sequence_.end()) {
+  const auto iterator = pose_data_sequence_.find(pose_label);
+  if (iterator == pose_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get pose start time, invalid label: {} ",
                      pose_label);
     return std::nan("");
   }
 
-  return pose_data_sequence_.at(pose_label).front()->timestamp;
+  return iterator->second.front()->timestamp;
 }
 
 double SensorDataManager::GetImuStartTimeByLabel(
     const std::string &imu_label) const {
-  if (imu_data_sequence_.find(imu_label) == imu_data_sequence_.end()) {
+  const auto iterator = imu_data_sequence_.find(imu_label);
+  if (iterator == imu_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get IMU start time, invalid label: {} ",
                      imu_label);
     return std::nan("");
   }
 
-  return imu_data_sequence_.at(imu_label).front()->timestamp;
+  return iterator->second.front()->timestamp;
 }
 
 double SensorDataManager::GetPoseEndTimeByLabel(
     const std::string &pose_label) const {
-  if (pose_data_sequence_.find(pose_label) == pose_data_sequence_.end()) {
+  const auto iterator = pose_data_sequence_.find(pose_label);
+  if (iterator == pose_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get pose end time, invalid label: {} ",
                      pose_label);
     return std::nan("");
   }
 
-  return pose_data_sequence_.at(pose_label).back()->timestamp;
+  return iterator->second.back()->timestamp;
 }
 
 double SensorDataManager::GetImuEndTimeByLabel(
     const std::string &imu_label) const {
-  if (imu_data_sequence_.find(imu_label) == imu_data_sequence_.end()) {
+  const auto iterator = imu_data_sequence_.find(imu_label);
+  if (iterator == imu_data_sequence_.end() || iterator->second.empty()) {
     spdlog::critical("Failed to get IMU end time, invalid label: {} ",
                      imu_label);
     return std::nan("");
   }
 
-  return imu_data_sequence_.at(imu_label).back()->timestamp;
+  return iterator->second.back()->timestamp;
 }
 
 double SensorDataManager::GetPoseFrequencyByLabel(
     const std::string &pose_label) const {
-  if (pose_data_sequence_.find(pose_label) == pose_data_sequence_.end()) {
+  const auto iterator = pose_data_sequence_.find(pose_label);
+  if (iterator == pose_data_sequence_.end()) {
     spdlog::critical("Failed to get pose frequency, invalid label: {} ",
                      pose_label);
     return std::nan("");
   }
 
-  if (pose_data_sequence_.at(pose_label).size() < 2) {
+  if (iterator->second.size() < 2) {
     spdlog::critical("Failed to get pose frequency, insufficient pose data. ");
     return std::nan("");
   }
 
   double freq =
-      (pose_data_sequence_.at(pose_label).size() - 1) /
-      (GetPoseEndTimeByLabel(pose_label) - GetPoseStartTimeByLabel(pose_label));
+      (iterator->second.size() - 1) / (iterator->second.back()->timestamp -
+                                       iterator->second.front()->timestamp);
 
   return freq;
 }
 
 double SensorDataManager::GetImuFrequencyByLabel(
     const std::string &imu_label) const {
-  if (imu_data_sequence_.find(imu_label) == imu_data_sequence_.end()) {
+  const auto iterator = imu_data_sequence_.find(imu_label);
+  if (iterator == imu_data_sequence_.end()) {
     spdlog::critical("Failed to get IMU frequency, invalid label: {} ",
                      imu_label);
     return std::nan("");
   }
 
-  if (imu_data_sequence_.at(imu_label).size() < 2) {
+  if (iterator->second.size() < 2) {
     spdlog::critical("Failed to get IMU frequency, insufficient IMU data. ");
     return std::nan("");
   }
 
   double freq =
-      (imu_data_sequence_.at(imu_label).size() - 1) /
-      (GetPoseEndTimeByLabel(imu_label) - GetPoseStartTimeByLabel(imu_label));
+      (iterator->second.size() - 1) / (iterator->second.back()->timestamp -
+                                       iterator->second.front()->timestamp);
 
   return freq;
 }

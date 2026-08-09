@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -166,6 +168,12 @@ class TimeOffsetInitializer {
   bool GenerateAngularVel(const SeqT &seq, std::vector<double> &timestamps,
                           DynamicV3D &angular_vel) {
     // Step 1: Calculate the number of samples between start and stop times.
+    if (seq.empty()) {
+      spdlog::critical(
+          "Cannot initialize the time offset from an empty sequence.");
+      return false;
+    }
+
     double start_time = seq.front()->timestamp + velocity_calc_range_;
     double end_time = seq.back()->timestamp - velocity_calc_range_;
     if (start_time < 0) {

@@ -14,6 +14,11 @@
 
 #include "hpgt/sensor_data/pose_data.h"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <sstream>
+
 namespace hpgt {
 
 PoseFrame::PoseFrame(const double &t, const Eigen::Vector3d &p,
@@ -33,45 +38,66 @@ bool PoseDataLoader::Load(const std::string &data_path,
     return false;
   }
 
+  PoseSequence parsed_data;
   std::string line;
+  size_t line_number = 0;
   double last_timestamp = std::numeric_limits<double>::lowest();
   while (std::getline(file, line)) {
+    ++line_number;
+    if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
+      continue;
+    }
+
     std::stringstream ss(line);
-    std::string value;
     std::vector<double> values;
+    double value = 0.;
+    while (ss >> value) {
+      values.push_back(value);
+    }
 
-    try {
-      while (std::getline(ss, value, ' ')) {
-        values.push_back(std::stod(value));
-      }
-    } catch (const std::exception &e) {
+    if (!ss.eof() || values.size() != 8) {
       spdlog::critical(
-          "Timestamped poses in the pose file must be in TUM format, i.e. "
-          "\"timestamp(s) tx(m) ty(m) tz(m) qx qy qz qw\". ");
+          "Invalid pose data in '{}' at line {}. Expected TUM format "
+          "\"timestamp(s) tx(m) ty(m) tz(m) qx qy qz qw\".",
+          data_path, line_number);
       return false;
     }
 
-    if (values.size() != 8) {
-      spdlog::critical(
-          "Timestamped poses in the pose file must be in TUM format, i.e. "
-          "\"timestamp(s) tx(m) ty(m) tz(m) qx qy qz qw\". ");
+    if (!std::all_of(values.begin(), values.end(),
+                     [](double element) { return std::isfinite(element); })) {
+      spdlog::critical("Non-finite pose value in '{}' at line {}.", data_path,
+                       line_number);
       return false;
     }
 
-    double timestamp(values[0]);
-    Eigen::Vector3d trans(values[1], values[2], values[3]);
-    Eigen::Quaterniond rot(values[7], values[4], values[5], values[6]);
+    const double timestamp = values[0];
+    const Eigen::Vector3d trans(values[1], values[2], values[3]);
+    const Eigen::Quaterniond rot(values[7], values[4], values[5], values[6]);
 
-    if (timestamp < last_timestamp) {
+    if (timestamp <= last_timestamp) {
       spdlog::critical(
-          "Timestamps in the pose file must be in ascending order. ");
+          "Pose timestamps in '{}' must be strictly increasing; invalid value "
+          "at line {}.",
+          data_path, line_number);
       return false;
     }
 
-    pose_data.push_back(PoseFrame::Create(timestamp, trans, rot));
+    if (rot.squaredNorm() <= std::numeric_limits<double>::epsilon()) {
+      spdlog::critical("Invalid zero-norm quaternion in '{}' at line {}.",
+                       data_path, line_number);
+      return false;
+    }
+
+    parsed_data.push_back(PoseFrame::Create(timestamp, trans, rot));
     last_timestamp = timestamp;
   }
 
+  if (parsed_data.empty()) {
+    spdlog::critical("Pose data file contains no measurements: {}", data_path);
+    return false;
+  }
+
+  pose_data = std::move(parsed_data);
   return true;
 }
 

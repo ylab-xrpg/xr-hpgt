@@ -96,7 +96,6 @@ struct ImuGyrFactor {
     // gradients to zero.
     size_t rot_spline_index;
     T rot_spline_fraction;
-    rot_meta_.ComputeSplineIndex(t_I, rot_spline_index, rot_spline_fraction);
     if (!rot_meta_.ComputeSplineIndex(t_I, rot_spline_index,
                                       rot_spline_fraction)) {
       Eigen::Map<Eigen::Matrix<T, 3, 1>> res(residuals);
