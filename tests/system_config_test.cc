@@ -13,17 +13,27 @@
 // limitations under the License.
 
 // clang-format off
+#include <filesystem>
 #include <string>
 
 #include "hpgt/config/system_config.h"
 // clang-format on
 
-int main() {
+int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::info);
 
-  std::string work_dir = "../../resource/test_data";
-  std::string output_path = work_dir + "/config_template.json";
-  std::string input_path = work_dir + "/hpgt_config.json";
+  if (argc != 3) {
+    spdlog::critical("Usage: {} <data_dir> <output_dir>", argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  const std::filesystem::path data_dir = argv[1];
+  const std::filesystem::path output_dir = argv[2];
+  std::filesystem::create_directories(output_dir);
+
+  const std::string output_path =
+      (output_dir / "config_template.json").string();
+  const std::string input_path = (data_dir / "hpgt_config.json").string();
 
   // ===========================================================================
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 
@@ -21,16 +22,24 @@
 #include "hpgt/spline/so3_spline.hpp"
 #include "hpgt/spline/spline_bundle.hpp"
 
-int main() {
+int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::info);
 
-  // Working directory and data path.
-  std::string work_dir = "../../resource/test_data";
-  std::string data_path = work_dir + "/mocap.txt";
+  if (argc != 3) {
+    spdlog::critical("Usage: {} <data_dir> <output_dir>", argv[0]);
+    return EXIT_FAILURE;
+  }
 
-  std::string output_dir = work_dir + "/spline_result";
-  std::string output_traj_path = output_dir + "/spline_traj.txt";
-  std::string output_imu_path = output_dir + "/spline_imu.txt";
+  // Working directory and data path.
+  const std::filesystem::path data_dir = argv[1];
+  const std::filesystem::path output_dir = argv[2];
+  std::filesystem::create_directories(output_dir);
+
+  const std::string data_path = (data_dir / "mocap.txt").string();
+  const std::string output_traj_path =
+      (output_dir / "spline_traj.txt").string();
+  const std::string output_imu_path =
+      (output_dir / "spline_imu.txt").string();
 
   // ===========================================================================
 
@@ -187,7 +196,7 @@ int main() {
 
   spdlog::info("Generate {} pose and inertial data from B-spline. ",
                output_data_count);
-  spdlog::info("Output data is wrote to {}", output_dir);
+  spdlog::info("Output data is wrote to {}", output_dir.string());
 
   // ===========================================================================
 
@@ -201,7 +210,7 @@ int main() {
   const double kMetaMaxTime = 1034778.0233321;
   hpgt::TimeSpan kTimeSpan({kMetaMinTime, kMetaMaxTime});
   hpgt::TimeSpanList kTimeSpanList = {kTimeSpan};
-  
+
   hpgt::SplineMeta<kOrder> trans_meta, rot_meta;
   if (!spline_bundle->CalculateR3dSplineMeta(trans_spline_name, kTimeSpanList,
                                              trans_meta) ||
