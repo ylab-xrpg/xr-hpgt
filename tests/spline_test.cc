@@ -38,18 +38,17 @@ int main(int argc, char** argv) {
   const std::string data_path = (data_dir / "mocap.txt").string();
   const std::string output_traj_path =
       (output_dir / "spline_traj.txt").string();
-  const std::string output_imu_path =
-      (output_dir / "spline_imu.txt").string();
+  const std::string output_imu_path = (output_dir / "spline_imu.txt").string();
 
   // ===========================================================================
 
   // Step 1: Load discrete pose sequence.
   hpgt::PoseSequence pose_seq;
   if (hpgt::PoseDataLoader::Load(data_path, pose_seq)) {
-    spdlog::info("Load {} pose frames. ", pose_seq.size());
+    spdlog::info("Loaded {} pose frames.", pose_seq.size());
   } else {
-    spdlog::critical("Test incomplete. ");
-    std::exit(EXIT_FAILURE);
+    spdlog::critical("Spline test failed while loading pose data.");
+    return EXIT_FAILURE;
   }
 
   // ===========================================================================
@@ -60,8 +59,8 @@ int main(int argc, char** argv) {
   constexpr double kKnotInterval = 0.01;
   constexpr double kOutputInterval = 0.01;
   double time_margin = 0.02;
-  std::string trans_spline_name = "trans_spline";
-  std::string rot_spline_name = "rot_spline";
+  const std::string trans_spline_name = "trans_spline";
+  const std::string rot_spline_name = "rot_spline";
 
   // Calculate the start and end time of the spline. Time margin and knot
   // delta is considered.
@@ -90,13 +89,13 @@ int main(int argc, char** argv) {
   auto& rot_spline = spline_bundle->GetSo3dSpline(rot_spline_name);
 
   spdlog::info(
-      "Construct R(3) B-spline with start/end tine: {:.6f} / {:.6f}, and {} "
-      "control points. ",
+      "Constructed R(3) B-spline from {:.6f} to {:.6f} seconds with {} "
+      "control points.",
       trans_spline.MinTime(), trans_spline.MaxTime(),
       trans_spline.get_knots().size());
   spdlog::info(
-      "Construct SO(3) B-spline with start/end tine: {:.6f} / {:.6f}, and {} "
-      "control points. ",
+      "Constructed SO(3) B-spline from {:.6f} to {:.6f} seconds with {} "
+      "control points.",
       rot_spline.MinTime(), rot_spline.MaxTime(),
       rot_spline.get_knots().size());
 
@@ -116,8 +115,8 @@ int main(int argc, char** argv) {
       trans_spline.get_knot(i) = knot_trans;
       rot_spline.get_knot(i) = Sophus::SO3d(knot_rot_q);
     } else {
-      spdlog::critical("Test incomplete. ");
-      std::exit(EXIT_FAILURE);
+      spdlog::critical("Spline test failed while initializing knots.");
+      return EXIT_FAILURE;
     }
 
     current_knot_time += kKnotInterval;
@@ -130,20 +129,20 @@ int main(int argc, char** argv) {
   spdlog::info("========== TEST:GENERATE DATA FROM B-SPLINE ==========");
   spdlog::info("======================================================");
 
-  // Open out files.
+  // Open output files.
   std::ofstream output_traj_file(output_traj_path);
   if (!output_traj_file.is_open()) {
-    spdlog::critical("Fail to open the output spline trajectory file. ");
-    spdlog::critical("Test incomplete. ");
-    std::exit(EXIT_FAILURE);
+    spdlog::critical("Failed to open the output spline trajectory file: {}",
+                     output_traj_path);
+    return EXIT_FAILURE;
   }
   output_traj_file << std::fixed << std::setprecision(9);
 
   std::ofstream output_imu_file(output_imu_path);
   if (!output_imu_file.is_open()) {
-    spdlog::critical("Fail to open the output spline IMU file. ");
-    spdlog::critical("Test incomplete. ");
-    std::exit(EXIT_FAILURE);
+    spdlog::critical("Failed to open the output spline IMU file: {}",
+                     output_imu_path);
+    return EXIT_FAILURE;
   }
   output_imu_file << std::fixed << std::setprecision(9);
 
@@ -151,15 +150,15 @@ int main(int argc, char** argv) {
   constexpr double kGravityMagnitude = 9.8;
   double current_sample_time = trans_spline.MinTime();
   int output_data_count = 0;
-  Eigen::Vector3d gravity_in_W(0., 0., kGravityMagnitude);
+  const Eigen::Vector3d gravity_in_W(0., 0., kGravityMagnitude);
   while (current_sample_time < trans_spline.MaxTime()) {
     // Pose data.
     Eigen::Vector3d sample_trans;
     Sophus::SO3d sample_rot;
     if (!trans_spline.Evaluate(current_sample_time, sample_trans) ||
         !rot_spline.Evaluate(current_sample_time, sample_rot)) {
-      spdlog::critical("Test incomplete. ");
-      std::exit(EXIT_FAILURE);
+      spdlog::critical("Spline test failed while evaluating pose data.");
+      return EXIT_FAILURE;
     }
 
     // Inertial data.
@@ -167,25 +166,24 @@ int main(int argc, char** argv) {
     Eigen::Vector3d sample_gyr;
     if (!trans_spline.Acceleration(current_sample_time, sample_acc) ||
         !rot_spline.VelocityBody(current_sample_time, sample_gyr)) {
-      spdlog::critical("Test incomplete. ");
-      std::exit(EXIT_FAILURE);
+      spdlog::critical("Spline test failed while evaluating inertial data.");
+      return EXIT_FAILURE;
     }
 
     // Transform the acceleration to body frame.
     sample_acc = sample_rot.inverse() * (sample_acc + gravity_in_W);
 
     // Output to file stream.
+    const Eigen::Quaterniond sample_quat = sample_rot.unit_quaternion();
     output_traj_file << current_sample_time << " " << sample_trans.x() << " "
                      << sample_trans.y() << " " << sample_trans.z() << " "
-                     << sample_rot.unit_quaternion().x() << " "
-                     << sample_rot.unit_quaternion().y() << " "
-                     << sample_rot.unit_quaternion().z() << " "
-                     << sample_rot.unit_quaternion().w() << std::endl;
+                     << sample_quat.x() << " " << sample_quat.y() << " "
+                     << sample_quat.z() << " " << sample_quat.w() << '\n';
 
     output_imu_file << static_cast<long>(current_sample_time * 1.e9) << ", "
                     << sample_gyr.x() << ", " << sample_gyr.y() << ", "
                     << sample_gyr.z() << ", " << sample_acc.x() << ", "
-                    << sample_acc.y() << ", " << sample_acc.z() << std::endl;
+                    << sample_acc.y() << ", " << sample_acc.z() << '\n';
 
     current_sample_time += kOutputInterval;
     ++output_data_count;
@@ -194,9 +192,9 @@ int main(int argc, char** argv) {
   output_traj_file.close();
   output_imu_file.close();
 
-  spdlog::info("Generate {} pose and inertial data from B-spline. ",
+  spdlog::info("Generated {} pose and inertial samples from the B-spline.",
                output_data_count);
-  spdlog::info("Output data is wrote to {}", output_dir.string());
+  spdlog::info("Output data written to: {}", output_dir.string());
 
   // ===========================================================================
 
@@ -205,7 +203,7 @@ int main(int argc, char** argv) {
   spdlog::info("========= TEST: CALCULATE SEGMENT OF SPLINE  =========");
   spdlog::info("======================================================");
 
-  // Calculate segment form spline.
+  // Calculate a segment from the spline.
   const double kMetaMinTime = 1034777.8383324;
   const double kMetaMaxTime = 1034778.0233321;
   hpgt::TimeSpan kTimeSpan({kMetaMinTime, kMetaMaxTime});
@@ -216,21 +214,21 @@ int main(int argc, char** argv) {
                                              trans_meta) ||
       !spline_bundle->CalculateSo3dSplineMeta(rot_spline_name, kTimeSpanList,
                                               rot_meta)) {
-    spdlog::critical("Test incomplete. ");
-    std::exit(EXIT_FAILURE);
+    spdlog::critical("Spline test failed while calculating spline metadata.");
+    return EXIT_FAILURE;
   }
 
   // Print the result.
   hpgt::SplineSegment<kOrder> trans_segment = trans_meta.segments[0];
   hpgt::SplineSegment<kOrder> rot_segment = rot_meta.segments[0];
-  spdlog::info("Calculate spline segment from {:.6f} to {:.6f} seconds. ",
+  spdlog::info("Calculated spline segment from {:.6f} to {:.6f} seconds.",
                kMetaMinTime, kMetaMaxTime);
   spdlog::info("R(3) spline segment information:");
-  spdlog::info("Min time: {:.6f}, Max time: {:.6f}, knots num: {}",
+  spdlog::info("Min time: {:.6f}, max time: {:.6f}, number of knots: {}",
                trans_segment.MinTime(), trans_segment.MaxTime(),
                trans_segment.NumParameters());
   spdlog::info("SO(3) spline segment information:");
-  spdlog::info("Min time: {:.6f}, Max time: {:.6f}, knots num: {}",
+  spdlog::info("Min time: {:.6f}, max time: {:.6f}, number of knots: {}",
                rot_segment.MinTime(), rot_segment.MaxTime(),
                rot_segment.NumParameters());
 
@@ -239,17 +237,16 @@ int main(int argc, char** argv) {
   size_t index;
   double fraction;
   if (!rot_segment.ComputeTimeIndex(kSampleTime, index, fraction)) {
-    spdlog::critical("Test incomplete. ");
-    std::exit(EXIT_FAILURE);
+    spdlog::critical("Spline test failed while computing the time index.");
+    return EXIT_FAILURE;
   }
-  spdlog::info("Sample R(3) segment at {}: ", kSampleTime);
-  spdlog::info(
-      "The resulting index and fraction are {}, {:.6f}, respectively. ", index,
-      fraction);
+  spdlog::info("Sampled the R(3) segment at {}:", kSampleTime);
+  spdlog::info("The resulting index and fraction are {}, {:.6f}, respectively.",
+               index, fraction);
 
   // ===========================================================================
 
-  spdlog::info("Test complete. ");
+  spdlog::info("Spline test completed.");
 
   return 0;
 }

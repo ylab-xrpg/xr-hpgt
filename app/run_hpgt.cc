@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <filesystem>
+
 #include "hpgt/estimator/estimator.h"
 
 int main(int argc, char **argv) {
@@ -49,15 +51,11 @@ int main(int argc, char **argv) {
 
   if (argc == 2) {
     // Default file organization.
-    std::string config_name = "/hpgt_config.json";
-    std::string output_calib_name = "/hpgt_output_calib.json";
-    std::string output_traj_name = "/hpgt_output_traj.txt";
-
-    std::string work_dir = argv[1];
-    config_path = work_dir + config_name;
-    input_data_dir = work_dir;
-    output_calib_path = work_dir + output_calib_name;
-    output_traj_path = work_dir + output_traj_name;
+    const std::filesystem::path work_dir = argv[1];
+    config_path = (work_dir / "hpgt_config.json").string();
+    input_data_dir = work_dir.string();
+    output_calib_path = (work_dir / "hpgt_output_calib.json").string();
+    output_traj_path = (work_dir / "hpgt_output_traj.txt").string();
   } else if (argc == 5) {
     // Set by user.
     config_path = argv[1];

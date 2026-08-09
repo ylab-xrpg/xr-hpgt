@@ -145,7 +145,7 @@ struct AbsPoseFactor {
   }
 
  private:
-  // Spline meta data.
+  // Spline metadata.
   SplineMeta<Order> trans_meta_, rot_meta_;
   // Pose frame with measurement information.
   PoseFrame::Ptr pose_frame_;

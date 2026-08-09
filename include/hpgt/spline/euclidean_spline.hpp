@@ -1,3 +1,4 @@
+// clang-format off
 // Portions of this file are adapted from:
 // CTraj: Continuous-Time Trajectory (Time-Varying State) Representation and Estimation Library
 // Copyright 2024, the School of Geodesy and Geomatics (SGG), Wuhan University, China
@@ -20,6 +21,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+// clang-format on
 
 #pragma once
 

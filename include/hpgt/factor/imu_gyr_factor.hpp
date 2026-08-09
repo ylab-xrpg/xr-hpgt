@@ -128,7 +128,7 @@ struct ImuGyrFactor {
   }
 
  private:
-  // Spline meta data.
+  // Spline metadata.
   SplineMeta<Order> rot_meta_;
   // IMU frame with measurement information.
   ImuFrame::Ptr imu_frame_;

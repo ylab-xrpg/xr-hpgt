@@ -50,6 +50,7 @@ bool PoseDataLoader::Load(const std::string &data_path,
 
     std::stringstream ss(line);
     std::vector<double> values;
+    values.reserve(8);
     double value = 0.;
     while (ss >> value) {
       values.push_back(value);

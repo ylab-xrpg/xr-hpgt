@@ -1,3 +1,4 @@
+// clang-format off
 // Portions of this file are adapted from:
 // CTraj: Continuous-Time Trajectory (Time-Varying State) Representation and Estimation Library
 // Copyright 2024, the School of Geodesy and Geomatics (SGG), Wuhan University, China
@@ -20,6 +21,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+// clang-format on
 
 #pragma once
 
@@ -60,7 +62,7 @@ struct SplineInfo {
 
 /**
  * @brief Class for managing a bundle of B-splines of different types and of the
- * same order. Provide interfaces for calculating the spline meta data for
+ * same order. Provide interfaces for calculating the spline metadata for
  * specified time span list.
  *
  * @tparam Order B-spline order.
@@ -75,9 +77,9 @@ class SplineBundle {
   // Type definitions.
   using R3dSplineType = EuclideanSpline<3, Order, double>;
   using So3dSplineType = So3Spline<Order, double>;
-  // Eigen::Vector3d
+  // R(3) spline knot type.
   using R3dSplineKnotType = typename R3dSplineType::VecD;
-  // Sophus::SO3d
+  // SO(3) spline knot type.
   using So3dSplineKnotType = typename So3dSplineType::So3;
   using SplineMetaType = SplineMeta<Order>;
 
@@ -94,12 +96,12 @@ class SplineBundle {
   }
 
   /**
-   * @brief Calculate R(3) spline meta data for a givin time span list.
+   * @brief Calculate R(3) spline metadata for a given time span list.
    *
    * @param[in] name Name of the R(3) spline.
-   * @param[in] times List of time spans for which the spline meta data is
+   * @param[in] times List of time spans for which the spline metadata is
    * computed.
-   * @param[out] spline_meta Spline meta data result.
+   * @param[out] spline_meta Spline metadata result.
    */
   bool CalculateR3dSplineMeta(const std::string &name,
                               const TimeSpanList &times,
@@ -107,7 +109,7 @@ class SplineBundle {
     return CalculateSplineMeta(r3d_splines_.at(name), times, spline_meta);
   }
 
-  // Calculate SO(3) spline meta data for a givin time span list.
+  // Calculate SO(3) spline metadata for a given time span list.
   bool CalculateSo3dSplineMeta(const std::string &name,
                                const TimeSpanList &times,
                                SplineMetaType &spline_meta) const {
@@ -164,7 +166,7 @@ class SplineBundle {
   }
 
   /**
-   * @brief Extent the spline knots with default value.
+   * @brief Extend the spline knots with default values.
    *
    * @tparam SplineType Type of the spline.
    * @tparam KnotType Type of the spline knot.
@@ -179,7 +181,7 @@ class SplineBundle {
     }
   }
 
-  // Calculate R(3) spline meta data for a givin time span list.
+  // Calculate R(3) spline metadata for a given time span list.
   template <class SplineType>
   bool CalculateSplineMeta(const SplineType &spline, const TimeSpanList &times,
                            SplineMetaType &spline_meta) const {

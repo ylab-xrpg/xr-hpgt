@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <limits>
+#include <utility>
 
 #include "hpgt/estimator/factor_adder.h"
 #include "hpgt/initializer/spatial_extrinsic_initializer.h"
@@ -24,16 +25,13 @@
 namespace hpgt {
 
 Estimator::Estimator(SystemConfig::Ptr system_config,
-                     SensorDataManager::Ptr sensor_data_manager) {
-  system_config_ = system_config;
-  sensor_data_manager_ = sensor_data_manager;
-
-  trans_spline_name_ = "trans_spline";
-  rot_spline_name_ = "rot_spline";
-  spline_sensor_label_ = "";
-  opt_start_time_ = std::numeric_limits<double>::lowest();
-  opt_end_time_ = std::numeric_limits<double>::max();
-}
+                     SensorDataManager::Ptr sensor_data_manager)
+    : system_config_(std::move(system_config)),
+      sensor_data_manager_(std::move(sensor_data_manager)),
+      trans_spline_name_("trans_spline"),
+      rot_spline_name_("rot_spline"),
+      opt_start_time_(std::numeric_limits<double>::lowest()),
+      opt_end_time_(std::numeric_limits<double>::max()) {}
 
 bool Estimator::Initialize(double time_margin) {
   auto toff_initializer = TimeOffsetInitializer::Create();
@@ -48,11 +46,12 @@ bool Estimator::Initialize(double time_margin) {
   spdlog::info("--------------- Initialize time offset ---------------");
 
   // If the time offsets need to be optimized, perform initialization.
-  bool opt_temporal_param_flag = system_config_->get_opt_temporal_param_flag();
-  bool toff_init_flag = toff_initializer->Initialize(
+  const bool opt_temporal_param_flag =
+      system_config_->get_opt_temporal_param_flag();
+  const bool toff_init_flag = toff_initializer->Initialize(
       sensor_data_manager_, calib_parameter_, opt_temporal_param_flag);
   if (!toff_init_flag) {
-    spdlog::critical("Fail to initialize system time offset. ");
+    spdlog::critical("Failed to initialize the system time offsets.");
     return false;
   }
 
@@ -75,13 +74,13 @@ bool Estimator::Initialize(double time_margin) {
 
   // If the spatial extrinsic parameters need to be optimized, perform
   // initialization.
-  bool opt_spatial_param_flag = system_config_->get_opt_spatial_param_flag();
-  bool spatial_init_flag = spatial_initializer->Initialize(
+  const bool opt_spatial_param_flag =
+      system_config_->get_opt_spatial_param_flag();
+  const bool spatial_init_flag = spatial_initializer->Initialize(
       sensor_data_manager_, calib_parameter_,
       system_config_->get_gravity_magnitude(), opt_spatial_param_flag);
   if (!spatial_init_flag) {
-    spdlog::critical(
-        "Fail to initialize system spatial extrinsic parameters. ");
+    spdlog::critical("Failed to initialize the spatial extrinsic parameters.");
     return false;
   }
 
@@ -114,11 +113,12 @@ bool Estimator::Initialize(double time_margin) {
   spdlog::info("-------------- Initialize system spline --------------");
 
   for (const auto &[label, config] : sensor_data_manager_->GetAllPoseConfig()) {
-    double tau_start = sensor_data_manager_->GetPoseStartTimeByLabel(label);
-    double tau_end = sensor_data_manager_->GetPoseEndTimeByLabel(label);
+    const double tau_start =
+        sensor_data_manager_->GetPoseStartTimeByLabel(label);
+    const double tau_end = sensor_data_manager_->GetPoseEndTimeByLabel(label);
 
-    double t_start = calib_parameter_->toff_B_Pi.at(label) + tau_start;
-    double t_end = calib_parameter_->toff_B_Pi.at(label) + tau_end;
+    const double t_start = calib_parameter_->toff_B_Pi.at(label) + tau_start;
+    const double t_end = calib_parameter_->toff_B_Pi.at(label) + tau_end;
 
     if (t_start > opt_start_time_) {
       opt_start_time_ = t_start;
@@ -129,11 +129,12 @@ bool Estimator::Initialize(double time_margin) {
   }
 
   for (const auto &[label, config] : sensor_data_manager_->GetAllImuConfig()) {
-    double tau_start = sensor_data_manager_->GetImuStartTimeByLabel(label);
-    double tau_end = sensor_data_manager_->GetImuEndTimeByLabel(label);
+    const double tau_start =
+        sensor_data_manager_->GetImuStartTimeByLabel(label);
+    const double tau_end = sensor_data_manager_->GetImuEndTimeByLabel(label);
 
-    double t_start = calib_parameter_->toff_B_Ii.at(label) + tau_start;
-    double t_end = calib_parameter_->toff_B_Ii.at(label) + tau_end;
+    const double t_start = calib_parameter_->toff_B_Ii.at(label) + tau_start;
+    const double t_end = calib_parameter_->toff_B_Ii.at(label) + tau_end;
 
     if (t_start > opt_start_time_) {
       opt_start_time_ = t_start;
@@ -182,66 +183,65 @@ bool Estimator::Initialize(double time_margin) {
   auto &rot_spline = spline_bundle_->GetSo3dSpline(rot_spline_name_);
   opt_start_time_ = trans_spline.MinTime();
   opt_end_time_ = trans_spline.MaxTime();
-  size_t knot_size = trans_spline.get_knots().size();
+  const size_t knot_size = trans_spline.get_knots().size();
 
   // Time check.
   if (!(std::abs(trans_spline.MinTime() - rot_spline.MinTime()) < 1.e-9) ||
       !(std::abs(trans_spline.MaxTime() - rot_spline.MaxTime()) < 1.e-9) ||
       trans_spline.get_knots().size() != rot_spline.get_knots().size()) {
-    spdlog::critical("Inconsistent parameters for system B-splines. ");
+    spdlog::critical("The system B-splines have inconsistent parameters.");
     return false;
   } else if ((opt_end_time_ - opt_start_time_) <
              2 * SystemConfig::kSplineOrder * time_margin) {
     spdlog::critical(
         "The time range for optimization is too small. Please input "
-        "measurement data covering a longer time period. ");
+        "measurement data covering a longer time period.");
     return false;
   }
   spdlog::info(
-      "Construct system spline with start / end time: {:.6f} / {:.6f}, and "
-      "{} control points. ",
+      "Constructed the system spline from {:.6f} to {:.6f} seconds with {} "
+      "control points.",
       opt_start_time_, opt_end_time_, knot_size);
 
   // Step 3.2: Determine the reference pose sequence to initialize the knots.
+  double spline_sensor_frequency = std::numeric_limits<double>::lowest();
   for (const auto &[label, config] : sensor_data_manager_->GetAllPoseConfig()) {
     if (!config.abs_pose_flag) {
       continue;
     }
 
-    if (spline_sensor_label_ == "") {
+    const double frequency =
+        sensor_data_manager_->GetPoseFrequencyByLabel(label);
+    if (frequency > spline_sensor_frequency) {
       spline_sensor_label_ = label;
-    }
-
-    if (sensor_data_manager_->GetPoseFrequencyByLabel(label) >
-        sensor_data_manager_->GetPoseFrequencyByLabel(spline_sensor_label_)) {
-      spline_sensor_label_ = label;
+      spline_sensor_frequency = frequency;
     }
   }
 
   if (spline_sensor_label_ == "") {
     spdlog::critical(
-        "No sensor measurement applicable to initialize spline knots. ");
+        "No sensor measurements are available to initialize the spline knots.");
     return false;
   } else {
-    spdlog::info("Initialize spline knots with measurement of {}. ",
+    spdlog::info("Initializing spline knots from measurements in [{}].",
                  spline_sensor_label_);
   }
 
   // Step 3.3: Initialize control points based on interpolation of the reference
   // pose sequence.
-  Eigen::Quaterniond rot_q_P_B =
+  const Eigen::Quaterniond rot_q_P_B =
       calib_parameter_->rot_B_Pi.at(spline_sensor_label_)
           .inverse()
           .unit_quaternion();
-  Eigen::Vector3d trans_P_B =
+  const Eigen::Vector3d trans_P_B =
       -(rot_q_P_B * calib_parameter_->trans_B_Pi.at(spline_sensor_label_));
-  Eigen::Vector3d trans_G_W =
+  const Eigen::Vector3d trans_G_W =
       calib_parameter_->trans_G_Wi.at(spline_sensor_label_);
-  Eigen::Quaterniond rot_q_G_W =
+  const Eigen::Quaterniond rot_q_G_W =
       calib_parameter_->rot_G_Wi.at(spline_sensor_label_).unit_quaternion();
-  double toff_P_B = -calib_parameter_->toff_B_Pi.at(spline_sensor_label_);
+  const double toff_P_B = -calib_parameter_->toff_B_Pi.at(spline_sensor_label_);
 
-  auto &spline_pose_seq =
+  const auto &spline_pose_seq =
       sensor_data_manager_->GetPoseSeqByLabel(spline_sensor_label_);
   double current_knot_time = opt_start_time_ - kSplineKnotDeltaTime + toff_P_B;
   for (size_t i = 0; i < knot_size; ++i) {
@@ -250,7 +250,7 @@ bool Estimator::Initialize(double time_margin) {
 
     if (!InitializerHelper::GetTargetPose(spline_pose_seq, current_knot_time,
                                           trans_W_P, rot_q_W_P)) {
-      spdlog::critical("Fail to initialize system spline knots. ");
+      spdlog::critical("Failed to initialize the system spline knots.");
       return false;
     }
 
@@ -266,7 +266,7 @@ bool Estimator::Initialize(double time_margin) {
     current_knot_time += kKnotInterval;
   }
 
-  spdlog::info("Complete the initialization of B-spline knots. ");
+  spdlog::info("System B-spline knots initialized.");
 
   // ===========================================================================
 
@@ -288,20 +288,20 @@ bool Estimator::BuildAndOptimize() {
 
   // Step 1: Add the factors constructed from pose measurements.
   for (const auto &[label, config] : sensor_data_manager_->GetAllPoseConfig()) {
-    double toff_B_P = calib_parameter_->toff_B_Pi.at(label);
+    const double toff_B_P = calib_parameter_->toff_B_Pi.at(label);
     if (config.abs_pose_flag) {
       // Step 1.1: Add absolute pose factor.
       int abs_factor_count = 0;
-      double kPoseTransWeight = 1. / config.trans_noise;
-      double kPoseRotWeight = 1. / config.rot_noise;
-      for (auto const &pose_frame :
+      const double kPoseTransWeight = 1. / config.trans_noise;
+      const double kPoseRotWeight = 1. / config.rot_noise;
+      for (const auto &pose_frame :
            sensor_data_manager_->GetPoseSeqByLabel(label)) {
         if (pose_frame->timestamp + toff_B_P <= kMeasStartTime ||
-            pose_frame->timestamp + toff_B_P >= kMeasEndTime)
+            pose_frame->timestamp + toff_B_P >= kMeasEndTime) {
           continue;
+        }
 
-        if (!factor_adder->AddAbsPoseFactor(label, pose_frame,
-                                            kPoseTransWeight,
+        if (!factor_adder->AddAbsPoseFactor(label, pose_frame, kPoseTransWeight,
                                             kPoseRotWeight)) {
           spdlog::critical("Failed to add an absolute pose factor for [{}].",
                            label);
@@ -310,8 +310,7 @@ bool Estimator::BuildAndOptimize() {
         ++abs_factor_count;
       }
 
-      spdlog::info("Add a total of {} absolute pose factors. ",
-                   abs_factor_count);
+      spdlog::info("Added {} absolute pose factors.", abs_factor_count);
     } else {
       // Step 1.2: Add relative pose factor, to handle trajectories that have
       // cumulative error.
@@ -321,97 +320,64 @@ bool Estimator::BuildAndOptimize() {
     }
   }
 
-// ===========================================================================
+  // ===========================================================================
 
-// Step 2: Add the factors constructed from IMU measurements, including
-// acceleration and angular velocity.
-for (const auto &[label, config] : sensor_data_manager_->GetAllImuConfig()) {
-  int imu_factor_count = 0;
-  double toff_B_I = calib_parameter_->toff_B_Ii.at(label);
-  ImuModelType imu_model_type = config.model_type;
-  // Convert the continuous-time noise into discrete-time noise.
-  double kAccWeight = 1. / (config.noise[0] * std::sqrt(config.frequency));
-  double kGyrWeight = 1. / (config.noise[2] * std::sqrt(config.frequency));
+  // Step 2: Add the factors constructed from IMU measurements, including
+  // acceleration and angular velocity.
+  for (const auto &[label, config] : sensor_data_manager_->GetAllImuConfig()) {
+    int imu_factor_count = 0;
+    const double toff_B_I = calib_parameter_->toff_B_Ii.at(label);
+    const ImuModelType imu_model_type = config.model_type;
+    // Convert the continuous-time noise into discrete-time noise.
+    const double kAccWeight =
+        1. / (config.noise[0] * std::sqrt(config.frequency));
+    const double kGyrWeight =
+        1. / (config.noise[2] * std::sqrt(config.frequency));
 
-  for (auto const &imu_frame : sensor_data_manager_->GetImuSeqByLabel(label)) {
-    if (imu_frame->timestamp + toff_B_I <= kMeasStartTime ||
-        imu_frame->timestamp + toff_B_I >= kMeasEndTime)
-      continue;
+    for (const auto &imu_frame :
+         sensor_data_manager_->GetImuSeqByLabel(label)) {
+      if (imu_frame->timestamp + toff_B_I <= kMeasStartTime ||
+          imu_frame->timestamp + toff_B_I >= kMeasEndTime) {
+        continue;
+      }
 
-    if (!factor_adder->AddImuAccFactor(label, imu_frame, imu_model_type,
-                                       kAccWeight) ||
-        !factor_adder->AddImuGyrFactor(label, imu_frame, imu_model_type,
-                                       kGyrWeight)) {
-      spdlog::critical("Failed to add an IMU factor for [{}].", label);
-      return false;
+      if (!factor_adder->AddImuAccFactor(label, imu_frame, imu_model_type,
+                                         kAccWeight) ||
+          !factor_adder->AddImuGyrFactor(label, imu_frame, imu_model_type,
+                                         kGyrWeight)) {
+        spdlog::critical("Failed to add an IMU factor for [{}].", label);
+        return false;
+      }
+      ++imu_factor_count;
     }
-    ++imu_factor_count;
+
+    spdlog::info("Added {} IMU factors.", imu_factor_count);
   }
 
-  spdlog::info("Add a total of {} imu factors. ", imu_factor_count);
-}
+  // ===========================================================================
 
-// ===========================================================================
+  // Step 4: Set options for ceres solver and solve the problem.
+  ceres::Solver::Options options;
+  ceres::Solver::Summary summary;
+  options.trust_region_strategy_type = ceres::DOGLEG;
+  // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+  options.max_num_iterations = 15;
+  options.num_threads = 10;
+  options.minimizer_progress_to_stdout = true;
 
-// // Step 3: Add prior constraints on relative poses to adjacent knots of the
-// // B-spline.
-// int knots_num =
-//     spline_bundle_->GetR3dSpline(trans_spline_name_).get_knots().size();
-// int knot_prior_factor_count = 0;
-// // Set the weights to match those of the sensors used in constructing the
-// // B-spline.
-// double kKnotPriorTransWeight = 4. /
-// sensor_data_manager_->GetAllPoseConfig()
-//                                         .at(spline_sensor_label_)
-//                                         .trans_noise;
-// double kKnotPriorRotWeight = 4. / sensor_data_manager_->GetAllPoseConfig()
-//                                       .at(spline_sensor_label_)
-//                                       .rot_noise;
-// for (int i = 0; i < system_config_->kSplineOrder - 1; ++i) {
-//   // We attempt to fix the relative poses of the knots near the start and
-//   // end points of the B-spline to their initial states to prevent them
-//   // from diverging due to insufficient constraints.
-//   int front_i = i;
-//   int front_j = i + 1;
-//   int rear_j = knots_num - 1 - i;
-//   int rear_i = rear_j - 1;
+  // Solve the problem.
+  spdlog::info("Running nonlinear optimization; this may take some time...");
+  ceres::Solve(options, &problem_, &summary);
 
-// factor_adder->AddSplineKnotPriorFactor(
-//     front_i, front_j, kKnotPriorTransWeight, kKnotPriorRotWeight);
-// factor_adder->AddSplineKnotPriorFactor(rear_i, rear_j,
-// kKnotPriorTransWeight,
-//                                        kKnotPriorRotWeight);
+  // ===========================================================================
 
-//   ++knot_prior_factor_count;
-// }
-
-// spdlog::info("Add a total of {} spline knot prior factors. ",
-//              knot_prior_factor_count);
-
-// ===========================================================================
-
-// Step 4: Set options for ceres solver and solve the problem.
-ceres::Solver::Options options;
-ceres::Solver::Summary summary;
-options.trust_region_strategy_type = ceres::DOGLEG;
-// options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-options.max_num_iterations = 15;
-options.num_threads = 10;
-options.minimizer_progress_to_stdout = true;
-
-// Solve the problem.
-spdlog::info("Perform gradient descent, it may take some time... ");
-ceres::Solve(options, &problem_, &summary);
-
-// ===========================================================================
-
-return summary.IsSolutionUsable();
+  return summary.IsSolutionUsable();
 }
 
 bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
                                    const std::string &output_traj_path) {
   // Copy the current system configuration as the basis for the output.
-  SystemConfig::Ptr output_config = SystemConfig::Create();
+  auto output_config = SystemConfig::Create();
   *output_config = *system_config_;
 
   // ===========================================================================
@@ -419,19 +385,19 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
   // Step 1: Print calibration parameters and update the results in the
   // output configuration.
 
-  spdlog::info("--------- Print calibration parameters result --------");
+  spdlog::info("------------ Calibration parameter results -----------");
 
   // Step 1.1: Pose sensors.
   for (const auto &[label, config] : sensor_data_manager_->GetAllPoseConfig()) {
-    spdlog::info("- Calibration parameters for [{}]. ", label);
+    spdlog::info("- Calibration parameters for [{}].", label);
 
-    double toff_B_Pi = calib_parameter_->toff_B_Pi.at(label) +
-                       calib_parameter_->toff_B_Pi_increment.at(label);
-    Eigen::Vector3d trans_B_Pi = calib_parameter_->trans_B_Pi.at(label);
-    Eigen::Quaterniond rot_q_B_Pi =
+    const double toff_B_Pi = calib_parameter_->toff_B_Pi.at(label) +
+                             calib_parameter_->toff_B_Pi_increment.at(label);
+    const Eigen::Vector3d trans_B_Pi = calib_parameter_->trans_B_Pi.at(label);
+    const Eigen::Quaterniond rot_q_B_Pi =
         calib_parameter_->rot_B_Pi.at(label).unit_quaternion();
-    Eigen::Vector3d trans_G_Wi = calib_parameter_->trans_G_Wi.at(label);
-    Eigen::Quaterniond rot_q_G_Wi =
+    const Eigen::Vector3d trans_G_Wi = calib_parameter_->trans_G_Wi.at(label);
+    const Eigen::Quaterniond rot_q_G_Wi =
         calib_parameter_->rot_G_Wi.at(label).unit_quaternion();
 
     // Print the results.
@@ -439,24 +405,24 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
                  label, toff_B_Pi);
 
     spdlog::info(
-        "Translation (tran_BP) for body frame is optimized to:  [{:.6f}, "
+        "Translation (trans_BP) for the body frame is optimized to:  [{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_B_Pi.x(), trans_B_Pi.y(), trans_B_Pi.z());
     spdlog::info(
-        "Rotation (rot_q_BP) for body frame is optimized to:    [{:.6f}, "
+        "Rotation (rot_q_BP) for the body frame is optimized to:    [{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_B_Pi.x(), rot_q_B_Pi.y(), rot_q_B_Pi.z(), rot_q_B_Pi.w());
 
     spdlog::info(
-        "Translation (tran_GW) for world frame is optimized to: [{:.6f}, "
+        "Translation (trans_GW) for the world frame is optimized to: [{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_G_Wi.x(), trans_G_Wi.y(), trans_G_Wi.z());
     spdlog::info(
-        "Rotation (rot_q_GW) for world frame is optimized to:   [{:.6f}, "
+        "Rotation (rot_q_GW) for the world frame is optimized to:   [{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_G_Wi.x(), rot_q_G_Wi.y(), rot_q_G_Wi.z(), rot_q_G_Wi.w());
 
-    // Updata the results in the output configuration.
+    // Update the results in the output configuration.
     for (auto &pose_config : output_config->get_pose_config()) {
       if (pose_config.file_name == label) {
         pose_config.toff_BP_init = toff_B_Pi;
@@ -472,33 +438,32 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
 
   // Step 1.2: IMUs.
   for (const auto &[label, config] : sensor_data_manager_->GetAllImuConfig()) {
-    spdlog::info("- Calibration parameters for [{}]. ", label);
+    spdlog::info("- Calibration parameters for [{}].", label);
 
-    double toff_B_Ii = calib_parameter_->toff_B_Ii.at(label) +
-                       calib_parameter_->toff_B_Ii_increment.at(label);
-    Eigen::Vector3d trans_B_Ii = calib_parameter_->trans_B_Ii.at(label);
-    Eigen::Quaterniond rot_q_B_Ii =
+    const double toff_B_Ii = calib_parameter_->toff_B_Ii.at(label) +
+                             calib_parameter_->toff_B_Ii_increment.at(label);
+    const Eigen::Vector3d trans_B_Ii = calib_parameter_->trans_B_Ii.at(label);
+    const Eigen::Quaterniond rot_q_B_Ii =
         calib_parameter_->rot_B_Ii.at(label).unit_quaternion();
-    Eigen::Vector3d acc_bias_i =
-        calib_parameter_->imu_intri.at(label)->acc_bias;
-    Eigen::Vector3d gyr_bias_i =
-        calib_parameter_->imu_intri.at(label)->gyr_bias;
-    Eigen::Matrix<double, 6, 1> acc_map_coeff_i =
-        calib_parameter_->imu_intri.at(label)->acc_map_coeff;
-    Eigen::Matrix<double, 6, 1> gyr_map_coeff_i =
-        calib_parameter_->imu_intri.at(label)->gyr_map_coeff;
-    Eigen::Quaterniond rot_gyr_acc_i =
-        calib_parameter_->imu_intri.at(label)->rot_gyr_acc.unit_quaternion();
+    const auto &imu_intrinsic = *calib_parameter_->imu_intri.at(label);
+    const Eigen::Vector3d acc_bias_i = imu_intrinsic.acc_bias;
+    const Eigen::Vector3d gyr_bias_i = imu_intrinsic.gyr_bias;
+    const Eigen::Matrix<double, 6, 1> acc_map_coeff_i =
+        imu_intrinsic.acc_map_coeff;
+    const Eigen::Matrix<double, 6, 1> gyr_map_coeff_i =
+        imu_intrinsic.gyr_map_coeff;
+    const Eigen::Quaterniond rot_gyr_acc_i =
+        imu_intrinsic.rot_gyr_acc.unit_quaternion();
 
     // Print the results.
     spdlog::info("Time offset (toff_BI) for [{}] is optimized to: {:.6f}",
                  label, toff_B_Ii);
     spdlog::info(
-        "Translation (tran_BI) for body frame is optimized to:  [{:.6f}, "
+        "Translation (trans_BI) for the body frame is optimized to:  [{:.6f}, "
         "{:.6f}, {:.6f}]",
         trans_B_Ii.x(), trans_B_Ii.y(), trans_B_Ii.z());
     spdlog::info(
-        "Rotation (rot_q_BI) for body frame is optimized to:    [{:.6f}, "
+        "Rotation (rot_q_BI) for the body frame is optimized to:    [{:.6f}, "
         "{:.6f}, {:.6f}, {:.6f}]",
         rot_q_B_Ii.x(), rot_q_B_Ii.y(), rot_q_B_Ii.z(), rot_q_B_Ii.w());
 
@@ -524,7 +489,7 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
         rot_gyr_acc_i.x(), rot_gyr_acc_i.y(), rot_gyr_acc_i.z(),
         rot_gyr_acc_i.w());
 
-    // Updata the results in the output configuration.
+    // Update the results in the output configuration.
     for (auto &imu_config : output_config->get_imu_config()) {
       if (imu_config.file_name == label) {
         imu_config.toff_BI_init = toff_B_Ii;
@@ -555,33 +520,29 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
   }
   file << std::fixed << std::setprecision(9);
 
+  const auto &trans_spline = spline_bundle_->GetR3dSpline(trans_spline_name_);
+  const auto &rot_spline = spline_bundle_->GetSo3dSpline(rot_spline_name_);
   const double kOutputInterval = 1. / system_config_->get_output_frequency();
   // We ignore parts of the trajectory with large errors at the start and end
   // points.
   const double kOutputMargin =
       SystemConfig::kSplineOrder * system_config_->get_spline_knot_interval();
-  const double kOutputEndTime =
-      spline_bundle_->GetR3dSpline(trans_spline_name_).MaxTime() -
-      kOutputMargin;
-  double current_time =
-      spline_bundle_->GetR3dSpline(trans_spline_name_).MinTime() +
-      kOutputMargin;
+  const double kOutputEndTime = trans_spline.MaxTime() - kOutputMargin;
+  double current_time = trans_spline.MinTime() + kOutputMargin;
   while (current_time < kOutputEndTime) {
     Sophus::Vector3d trans;
     Sophus::SO3d rot;
-    if (!spline_bundle_->GetR3dSpline(trans_spline_name_)
-             .Evaluate(current_time, trans) ||
-        !spline_bundle_->GetSo3dSpline(rot_spline_name_)
-             .Evaluate(current_time, rot)) {
+    if (!trans_spline.Evaluate(current_time, trans) ||
+        !rot_spline.Evaluate(current_time, rot)) {
       spdlog::critical("Failed to evaluate the system spline at {:.9f}.",
                        current_time);
       return false;
     }
-    Eigen::Quaterniond quat = rot.unit_quaternion();
+    const Eigen::Quaterniond quat = rot.unit_quaternion();
 
     file << current_time << " " << trans.x() << " " << trans.y() << " "
          << trans.z() << " " << quat.x() << " " << quat.y() << " " << quat.z()
-         << " " << quat.w() << std::endl;
+         << " " << quat.w() << '\n';
 
     current_time += kOutputInterval;
   }
@@ -592,8 +553,7 @@ bool Estimator::PrintAndSaveResult(const std::string &output_calib_path,
                      output_traj_path);
     return false;
   }
-  spdlog::info("Write system B-spline trajectory to file: {}",
-               output_traj_path);
+  spdlog::info("System B-spline trajectory written to: {}", output_traj_path);
 
   // ===========================================================================
 
