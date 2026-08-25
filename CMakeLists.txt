@@ -28,6 +28,21 @@ message(STATUS "Eigen3 version: ${Eigen3_VERSION}")
 find_package(Sophus REQUIRED)
 message(STATUS "Sophus version: ${Sophus_VERSION}")
 
+# Sophus uses an external fmt package when one is available, while spdlog uses
+# its bundled fmt by default. Reuse Sophus's fmt for spdlog headers to avoid
+# mixing incompatible fmt versions in the same translation unit. If no external
+# fmt target exists, retain spdlog's bundled backend.
+add_library(hpgt_spdlog INTERFACE)
+target_link_libraries(hpgt_spdlog INTERFACE spdlog::spdlog_header_only)
+if(TARGET fmt::fmt)
+  target_compile_definitions(hpgt_spdlog INTERFACE SPDLOG_FMT_EXTERNAL)
+  target_link_libraries(hpgt_spdlog INTERFACE fmt::fmt)
+  message(STATUS "spdlog fmt backend: external fmt shared with Sophus")
+else()
+  message(STATUS "spdlog fmt backend: bundled")
+endif()
+add_library(HPGT::spdlog ALIAS hpgt_spdlog)
+
 find_package(Ceres REQUIRED)
 message(STATUS "Ceres version: ${CERES_VERSION}")
 
@@ -54,7 +69,7 @@ target_link_libraries(
   HPGT
   PUBLIC Eigen3::Eigen
          nlohmann_json::nlohmann_json
-         spdlog::spdlog_header_only
+         HPGT::spdlog
          Sophus::Sophus
          Ceres::ceres)
 
